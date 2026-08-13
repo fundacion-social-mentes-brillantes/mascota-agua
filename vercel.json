@@ -1,4 +1,5 @@
 {
+  "crons": [{ "path": "/api/avisar", "schedule": "0 * * * *" }],
   "rewrites": [{ "source": "/((?!api/).*)", "destination": "/index.html" }],
   "headers": [
     {

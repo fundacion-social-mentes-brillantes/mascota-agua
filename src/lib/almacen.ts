@@ -122,6 +122,13 @@ export async function agregarRegistro(
   const ahora = Date.now()
   const registro: Omit<Registro, 'id'> = { ...datos, hora: ahora, dia: diaDe(ahora) }
   const referencia = await addDoc(colRegistros(uid), registro)
+  // El servidor de avisos necesita saber cuando fue el ultimo trago para no
+  // mandar un "tengo sed" justo despues de que la persona tomo agua.
+  await setDoc(
+    doc(obtenerDb(), 'usuarios', uid, 'estado', 'avisos'),
+    { ultimoTragoVisto: ahora },
+    { merge: true },
+  ).catch(() => {})
   // El total del día se guarda aparte para poder dibujar el histórico sin
   // tener que leer todos los tragos de todos los días.
   await setDoc(

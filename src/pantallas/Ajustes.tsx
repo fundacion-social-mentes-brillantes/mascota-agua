@@ -5,7 +5,8 @@ import { borrarChat, borrarTodo, guardarPerfil } from '../lib/almacen'
 import { borrarTodasLasFotos, contarFotos } from '../lib/fotos'
 import { calcularMeta } from '../lib/hidratacion'
 import { evaluarImc, fraseMundial } from '../lib/imc'
-import { estadoDeLosAvisos, pedirPermisoAvisos } from '../lib/recordatorios'
+import { estadoDeLosAvisos } from '../lib/recordatorios'
+import { estaSuscrito, suscribirAvisos } from '../lib/push'
 import { VOCES, VOZ_POR_DEFECTO, hablar } from '../lib/voz'
 import MascotaDibujo from '../componentes/MascotaViva'
 import type { Actividad, Clima, EspecieMascota, Mascota, Perfil } from '../lib/tipos'
@@ -56,7 +57,7 @@ export default function Ajustes({
   const [despertar, setDespertar] = useState(perfil.horaDespertar)
   const [dormir, setDormir] = useState(perfil.horaDormir)
   const [avisos, setAvisos] = useState(perfil.recordatoriosActivos)
-  const [permiso, setPermiso] = useState(estadoDeLosAvisos())
+  const [, setPermiso] = useState(estadoDeLosAvisos())
   const [fotos, setFotos] = useState(0)
   const [mensaje, setMensaje] = useState<string | null>(null)
   const [guardando, setGuardando] = useState(false)
@@ -66,6 +67,12 @@ export default function Ajustes({
   const [vozActiva, setVozActiva] = useState(perfil.vozActiva !== false)
   const [voz, setVoz] = useState(perfil.voz ?? VOZ_POR_DEFECTO)
   const [probandoVoz, setProbandoVoz] = useState(false)
+  const [suscrito, setSuscrito] = useState(false)
+  const [ocupadoAvisos, setOcupadoAvisos] = useState(false)
+
+  useEffect(() => {
+    estaSuscrito().then(setSuscrito)
+  }, [])
 
   async function probarVoz(cual: string) {
     setVoz(cual)
@@ -143,16 +150,34 @@ export default function Ajustes({
   }
 
   async function activarAvisos() {
-    const resultado = await pedirPermisoAvisos()
-    setPermiso(resultado)
-    if (resultado === 'granted') {
-      setAvisos(true)
-      await guardarPerfil(uid, { ...perfil, recordatoriosActivos: true })
-      setMensaje('Listo, te voy a avisar.')
-    } else if (resultado === 'denied') {
-      setMensaje(
-        'El navegador tiene bloqueados los avisos para esta app. Hay que permitirlos desde la configuración del navegador.',
-      )
+    setOcupadoAvisos(true)
+    setMensaje(null)
+    try {
+      const resultado = await suscribirAvisos(uid)
+      setPermiso(estadoDeLosAvisos())
+      if (resultado.ok) {
+        setSuscrito(true)
+        setAvisos(true)
+        await guardarPerfil(uid, { ...perfil, recordatoriosActivos: true })
+        // Un aviso de prueba ahí mismo, para que se vea cómo llega.
+        new Notification(`${mascota.nombre} ya te puede avisar`, {
+          body: 'Así se van a ver los avisos cuando tenga sed.',
+          icon: '/icons/icon-192.png',
+        })
+        setMensaje('Listo. Este teléfono ya recibe los avisos.')
+      } else if (resultado.motivo === 'sin-permiso') {
+        setMensaje(
+          'El navegador tiene bloqueados los avisos para esta app. Hay que permitirlos desde la configuración del navegador.',
+        )
+      } else if (resultado.motivo === 'sin-soporte') {
+        setMensaje(
+          'Este navegador no permite avisos. En iPhone hay que agregar la app a la pantalla de inicio primero.',
+        )
+      } else {
+        setMensaje('No se pudo activar. Intenta otra vez.')
+      }
+    } finally {
+      setOcupadoAvisos(false)
     }
   }
 
@@ -419,21 +444,27 @@ export default function Ajustes({
           />
           <span className="text-sm">Avisarme cuando lleve mucho sin tomar agua</span>
         </label>
-        {permiso !== 'granted' && (
-          <button
-            type="button"
-            onClick={activarAvisos}
-            className="mt-3 flex w-full items-center justify-center gap-2 rounded-2xl border border-[var(--color-agua)]/50 bg-[var(--color-agua)]/10 py-3 text-sm"
-          >
-            <Bell size={16} />
-            {permiso === 'no-soportado'
-              ? 'Este navegador no permite avisos'
-              : 'Permitir los avisos en este teléfono'}
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={activarAvisos}
+          disabled={ocupadoAvisos}
+          className={`mt-3 flex w-full items-center justify-center gap-2 rounded-2xl border py-3 text-sm disabled:opacity-60 ${
+            suscrito
+              ? 'border-[var(--color-logro)]/50 bg-[var(--color-logro)]/10 text-[var(--color-logro)]'
+              : 'border-[var(--color-agua)]/50 bg-[var(--color-agua)]/10'
+          }`}
+        >
+          <Bell size={16} />
+          {ocupadoAvisos
+            ? 'Un momento...'
+            : suscrito
+              ? 'Este teléfono ya recibe los avisos · tocar para probar'
+              : 'Activar los avisos en este teléfono'}
+        </button>
         <p className="mt-2 text-xs text-[var(--color-texto-suave)]">
-          En iPhone los avisos solo funcionan si primero agregas la app a la pantalla de
-          inicio (compartir → Agregar a inicio).
+          Con esto la mascota te escribe aunque la app esté cerrada. En iPhone solo
+          funciona si primero agregas la app a la pantalla de inicio (compartir → Agregar
+          a inicio).
         </p>
       </Bloque>
 

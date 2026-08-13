@@ -32,6 +32,9 @@ export default defineConfig({
         ],
       },
       workbox: {
+        // Se mete dentro del service worker: es lo que muestra los avisos de
+        // la mascota aunque la app este cerrada.
+        importScripts: ['/push-sw.js'],
         globPatterns: ['**/*.{js,css,html,svg,png,jpg,jpeg,webp,woff,woff2}'],
         cleanupOutdatedCaches: true,
         clientsClaim: true,
