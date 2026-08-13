@@ -1,0 +1,34 @@
+# Dependencias
+node_modules
+
+# Compilado
+dist
+dist-ssr
+*.local
+
+# Claves y variables (NUNCA subir)
+.env
+.env.local
+.env.*.local
+
+# Editores
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Vercel / Firebase
+.vercel
+.firebase
+firebase-debug.log
+firestore-debug.log
+
+# Registros
+logs
+*.log
+npm-debug.log*
