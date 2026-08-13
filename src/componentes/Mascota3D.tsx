@@ -582,7 +582,11 @@ export default function Mascota3D({
   alto?: number
 }) {
   return (
-    <div style={{ height: alto, width: '100%' }}>
+    // Esquinas redondeadas: sin esto el telon de fondo se ve como un
+    // recuadro pegado encima de la tarjeta.
+    <div
+      style={{ height: alto, width: '100%', borderRadius: 26, overflow: 'hidden' }}
+    >
       <Canvas
         shadows
         dpr={[1, 1.8]}

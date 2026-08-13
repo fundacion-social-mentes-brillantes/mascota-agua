@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from 'react'
-import { Send } from 'lucide-react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { Send, Volume2, VolumeX } from 'lucide-react'
 import { escucharChat, guardarMensaje } from '../lib/almacen'
 import { hablarConLaMascota, saludoInicial } from '../lib/mascotaIA'
+import { VOZ_POR_DEFECTO, callarMascota, hablar, paraLeerEnVoz } from '../lib/voz'
 import type { EstadoCuerpo, Mascota, MensajeChat, Perfil } from '../lib/tipos'
 
 const SUGERENCIAS = [
@@ -25,9 +26,25 @@ export default function Charla({
   const [mensajes, setMensajes] = useState<MensajeChat[]>([])
   const [texto, setTexto] = useState('')
   const [pensando, setPensando] = useState(false)
+  const [hablando, setHablando] = useState<string | null>(null)
   const final = useRef<HTMLDivElement>(null)
 
+  const voz = perfil.voz ?? VOZ_POR_DEFECTO
+  const vozActiva = perfil.vozActiva !== false
+
   useEffect(() => escucharChat(uid, setMensajes), [uid])
+
+  // Si se sale de la conversacion, la mascota se calla.
+  useEffect(() => () => callarMascota(), [])
+
+  const decirEnVoz = useCallback(
+    async (id: string, contenido: string) => {
+      setHablando(id)
+      await hablar(paraLeerEnVoz(contenido), voz, estado.nivel)
+      setHablando(null)
+    },
+    [voz, estado.nivel],
+  )
 
   useEffect(() => {
     final.current?.scrollIntoView({ behavior: 'smooth' })
@@ -42,6 +59,12 @@ export default function Charla({
       await guardarMensaje(uid, 'persona', limpia)
       const respuesta = await hablarConLaMascota(limpia, perfil, mascota, estado, mensajes)
       await guardarMensaje(uid, 'mascota', respuesta.texto)
+      // La mascota contesta y, si la voz esta encendida, lo dice en voz alta.
+      if (vozActiva) {
+        setHablando('ultima')
+        await hablar(paraLeerEnVoz(respuesta.texto), voz, estado.nivel)
+        setHablando(null)
+      }
     } catch {
       await guardarMensaje(
         uid,
@@ -63,7 +86,19 @@ export default function Charla({
         <Burbuja de="mascota">{saludoInicial(mascota, estado)}</Burbuja>
 
         {mensajes.map((mensaje) => (
-          <Burbuja key={mensaje.id} de={mensaje.de}>
+          <Burbuja
+            key={mensaje.id}
+            de={mensaje.de}
+            alEscuchar={
+              mensaje.de === 'mascota'
+                ? () =>
+                    hablando === mensaje.id
+                      ? (callarMascota(), setHablando(null))
+                      : decirEnVoz(mensaje.id, mensaje.texto)
+                : undefined
+            }
+            sonando={hablando === mensaje.id}
+          >
             {mensaje.texto}
           </Burbuja>
         ))}
@@ -118,7 +153,17 @@ export default function Charla({
   )
 }
 
-function Burbuja({ de, children }: { de: 'persona' | 'mascota'; children: React.ReactNode }) {
+function Burbuja({
+  de,
+  children,
+  alEscuchar,
+  sonando,
+}: {
+  de: 'persona' | 'mascota'
+  children: React.ReactNode
+  alEscuchar?: () => void
+  sonando?: boolean
+}) {
   const mia = de === 'persona'
   return (
     <div className={`flex ${mia ? 'justify-end' : 'justify-start'}`}>
@@ -130,6 +175,19 @@ function Burbuja({ de, children }: { de: 'persona' | 'mascota'; children: React.
         }`}
       >
         {children}
+        {alEscuchar && (
+          <button
+            type="button"
+            onClick={alEscuchar}
+            className={`mt-2 flex items-center gap-1.5 text-xs ${
+              sonando ? 'text-[var(--color-agua-clara)]' : 'text-[var(--color-texto-suave)]'
+            }`}
+            aria-label={sonando ? 'Callar' : 'Escuchar'}
+          >
+            {sonando ? <VolumeX size={14} /> : <Volume2 size={14} />}
+            {sonando ? 'Callar' : 'Escuchar'}
+          </button>
+        )}
       </div>
     </div>
   )

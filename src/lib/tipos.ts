@@ -33,6 +33,10 @@ export interface Perfil {
   horaDespertar: string // "06:30"
   horaDormir: string // "22:30"
   recordatoriosActivos: boolean
+  /** Si la mascota lee en voz alta lo que responde. */
+  vozActiva?: boolean
+  /** Cuál voz de Azure usa. Ver src/lib/voz.ts */
+  voz?: string
   /** Meta de agua BEBIDA al día, en ml. La calcula src/lib/hidratacion.ts */
   metaMl: number
   /** Meta puesta a mano por la persona; si existe, manda sobre la calculada. */
