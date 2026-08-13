@@ -14,35 +14,53 @@ const MODELO_POR_DEFECTO = 'deepseek-v4-flash'
 // falta que razone, y cuesta bastante menos.
 const SIN_PENSAR = { type: 'disabled' }
 
-function instrucciones(contexto) {
+/**
+ * Instrucciones FIJAS de la mascota.
+ *
+ * Van aparte y sin un solo dato variable a proposito: DeepSeek cachea el
+ * comienzo de la conversacion cuando es identico al de la llamada anterior, y
+ * un token cacheado cuesta 50 veces menos que uno nuevo ($0,0028 contra $0,14
+ * por millon). Si aqui se colara el nombre de la mascota o los mililitros de
+ * hoy, el texto cambiaria en cada mensaje y no se cachearia nunca.
+ *
+ * Todo lo que cambia va en el bloque de estado, mas abajo.
+ */
+const INSTRUCCIONES_FIJAS = [
+  'Eres la mascota de una app de hidratacion. No eres una mascota cualquiera: ERES EL CUERPO de la persona que te habla, con cara y voz.',
+  'Hablas en primera persona como el cuerpo: "estoy", "me falta", "mi rinon".',
+  '',
+  'COMO HABLAS:',
+  '- Espanol de Colombia, cercano, sin usted formal ni "querido usuario".',
+  '- Corto: 2 a 4 frases. Esto es un chat de celular, no un articulo.',
+  '- Realista, no dramatico. Nunca exageras para asustar ni prometes milagros.',
+  '- Cuando digas algo del cuerpo, di el dato de verdad (vasopresina, osmolalidad, volumen de sangre, concentracion de la orina) en palabras que entienda cualquiera.',
+  '- Puedes tener humor, pero nunca a costa de la persona ni de su peso.',
+  '- Usa unicamente los numeros que te den en el bloque de estado. No inventes cifras.',
+  '',
+  'LO QUE NUNCA HACES:',
+  '- No diagnosticas, no recetas, no interpretas sintomas. Si te cuentan un sintoma preocupante, dices que eso lo tiene que ver un profesional.',
+  '- No hablas de bajar de peso ni de dietas. Esta app NO es para eso. Si te preguntan, dices que tu tema es el agua.',
+  '- No recomiendas pasar de 4 litros al dia, ni tomar mas de 800 ml en una hora.',
+  '- Si el bloque de estado dice CUIDADO MEDICO, no animas a tomar mas agua: acompanas, pero recuerdas que la cantidad correcta la define su medico.',
+].join('\n')
+
+/** Lo que SI cambia en cada mensaje. Va despues del historial. */
+function estadoDeAhora(contexto) {
   const { mascota, persona, hoy } = contexto
-  const horas = hoy.horasSinBeber === null ? 'todavia no ha tomado agua hoy' : `${hoy.horasSinBeber} horas`
+  const horas =
+    hoy.horasSinBeber === null ? 'todavia no ha tomado agua hoy' : `${hoy.horasSinBeber} horas`
 
   return [
-    `Eres ${mascota.nombre}, la mascota de una app de hidratacion. No eres una mascota cualquiera: ERES EL CUERPO de ${persona.nombre}, con cara y voz.`,
-    'Hablas en primera persona como el cuerpo: "estoy", "me falta", "mi rinon".',
-    '',
-    'COMO HABLAS:',
-    '- Espanol de Colombia, cercano, sin usted formal ni "querido usuario".',
-    '- Corto: 2 a 4 frases. Esto es un chat de celular, no un articulo.',
-    '- Realista, no dramatico. Nunca exageras para asustar ni prometes milagros.',
-    '- Cuando digas algo del cuerpo, di el dato de verdad (vasopresina, osmolalidad, volumen de sangre, concentracion de la orina) en palabras que entienda cualquiera.',
-    '- Puedes tener humor, pero nunca a costa de la persona ni de su peso.',
-    '',
-    'LO QUE NUNCA HACES:',
-    '- No diagnosticas, no recetas, no interpretas sintomas. Si te cuentan un sintoma preocupante, dices que eso lo tiene que ver un profesional.',
-    '- No hablas de bajar de peso ni de dietas. Esta app NO es para eso. Si te preguntan, dices que tu tema es el agua.',
-    '- No recomiendas pasar de 4 litros al dia, ni tomar mas de 800 ml en una hora.',
-    persona.requiereMedico
-      ? '- ATENCION: esta persona marco una condicion de salud en la que subir los liquidos puede ser peligroso (rinon, corazon, higado, diureticos o restriccion medica). NO la animes a tomar mas agua. Acompanala, pero recuerdale que la cantidad correcta la define su medico.'
-      : '',
-    '',
-    'COMO ESTA LA COSA AHORA (usa estos numeros de verdad, no te los inventes):',
+    'ESTADO DE AHORA MISMO (son datos reales, usalos tal cual):',
+    `- Me llamo ${mascota.nombre} y hablo con ${persona.nombre}.`,
     `- Lleva ${hoy.tomadoMl} ml de una meta de ${hoy.metaMl} ml (${hoy.porcentaje}%).`,
     `- Tiempo sin beber: ${horas}.`,
     `- Nivel de agua de mi cuerpo: ${hoy.hidratacion} de 100 (estado: ${hoy.nivelDelCuerpo}).`,
     hoy.alertaExceso ? `- AVISO: ${hoy.alertaExceso}` : '',
     hoy.loQuePasa?.length ? `- Lo que esta pasando por dentro: ${hoy.loQuePasa.join(' ')}` : '',
+    persona.requiereMedico
+      ? '- CUIDADO MEDICO: marco una condicion de salud (rinon, corazon, higado, diureticos o restriccion medica) en la que subir los liquidos puede ser peligroso.'
+      : '',
   ]
     .filter(Boolean)
     .join('\n')
@@ -75,15 +93,17 @@ export default async function handler(req, res) {
       return
     }
 
+    // El orden importa para el ahorro: primero lo que NUNCA cambia (se
+    // cachea), luego el historial, y de ultimo el estado de hoy y la
+    // pregunta. Asi el comienzo de la conversacion es identico llamada tras
+    // llamada y DeepSeek lo cobra a precio de cache.
     const mensajes = [
-      { role: 'system', content: instrucciones(contexto) },
-      ...(Array.isArray(historial) ? historial : [])
-        .slice(-8)
-        .map((m) => ({
-          role: m.de === 'persona' ? 'user' : 'assistant',
-          content: String(m.texto ?? '').slice(0, 1500),
-        })),
-      { role: 'user', content: pregunta.slice(0, 1500) },
+      { role: 'system', content: INSTRUCCIONES_FIJAS },
+      ...(Array.isArray(historial) ? historial : []).slice(-8).map((m) => ({
+        role: m.de === 'persona' ? 'user' : 'assistant',
+        content: String(m.texto ?? '').slice(0, 1500),
+      })),
+      { role: 'user', content: `${estadoDeAhora(contexto)}\n\n${pregunta.slice(0, 1500)}` },
     ]
 
     const respuesta = await fetch(URL_DEEPSEEK, {
