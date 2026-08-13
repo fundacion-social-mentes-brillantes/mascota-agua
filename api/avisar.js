@@ -1,7 +1,18 @@
 // El que manda los avisos de "tengo sed".
 //
-// Lo llama un cron cada media hora. Recorre a las personas suscritas, mira
-// como va su dia y le manda un empujon SOLO a quien de verdad le hace falta.
+// Recorre a las personas suscritas, mira como va su dia y le manda un empujon
+// SOLO a quien de verdad le hace falta.
+//
+// QUIEN LO LLAMA: el plan Hobby de Vercel solo permite UN cron al dia, asi
+// que aqui queda uno a las 8 a.m. de Colombia (el saludo de la manana). Para
+// que avise varias veces al dia hay que llamar esta misma ruta desde afuera
+// cada 30 o 60 minutos:
+//
+//   GET https://mascota-agua.vercel.app/api/avisar?clave=EL_CRON_SECRET
+//
+// Con Make (que ya esta pagado y gratis) se arma en dos pasos: un modulo de
+// horario + un modulo HTTP con esa direccion. La ruta ya sabe callarse sola
+// cuando no hay nada que decir, asi que llamarla de mas no molesta a nadie.
 //
 // Reglas que respeta, en orden:
 //   1. Nunca entre la hora de dormir y la de despertar.
