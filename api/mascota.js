@@ -54,16 +54,17 @@ export default async function handler(req, res) {
     return
   }
 
-  const clave = process.env.DEEPSEEK_API_KEY
-  if (!clave) {
-    res.status(501).json({ error: 'Sin clave de DeepSeek configurada' })
-    return
-  }
-
-  // Solo responde a personas conectadas en la app.
+  // Primero: quien llama. Va ANTES de mirar la configuracion para no contarle
+  // a un desconocido si tenemos clave o no.
   const uid = await quienLlama(req)
   if (!uid) {
     res.status(401).json({ error: 'Hay que entrar a la app primero' })
+    return
+  }
+
+  const clave = process.env.DEEPSEEK_API_KEY
+  if (!clave) {
+    res.status(501).json({ error: 'Sin clave de DeepSeek configurada' })
     return
   }
 

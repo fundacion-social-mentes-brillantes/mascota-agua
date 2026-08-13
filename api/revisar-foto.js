@@ -16,18 +16,19 @@ export default async function handler(req, res) {
     return
   }
 
+  // Primero: quien llama. Mirar fotos cuesta plata, y ademas no hay por que
+  // contarle a un desconocido como esta configurado esto.
+  const uid = await quienLlama(req)
+  if (!uid) {
+    res.status(401).json({ error: 'Hay que entrar a la app primero' })
+    return
+  }
+
   const endpoint = process.env.AZURE_OPENAI_ENDPOINT
   const clave = process.env.AZURE_OPENAI_API_KEY
   const despliegue = process.env.AZURE_VISION_DEPLOYMENT
   if (!endpoint || !clave || !despliegue) {
     res.status(501).json({ error: 'Revision por foto no configurada' })
-    return
-  }
-
-  // Solo responde a personas conectadas en la app: mirar fotos cuesta plata.
-  const uid = await quienLlama(req)
-  if (!uid) {
-    res.status(401).json({ error: 'Hay que entrar a la app primero' })
     return
   }
 
