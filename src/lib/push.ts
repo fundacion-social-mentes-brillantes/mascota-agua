@@ -53,7 +53,7 @@ export async function suscribirAvisos(uid: string): Promise<ResultadoSuscripcion
 
     const datos = suscripcion.toJSON()
     await setDoc(
-      doc(obtenerDb(), 'usuarios', uid, 'estado', 'avisos'),
+      doc(obtenerDb(), 'avisos', uid),
       {
         endpoint: datos.endpoint,
         claves: datos.keys ?? {},
@@ -76,12 +76,48 @@ export async function quitarAvisos(uid: string): Promise<void> {
     const suscripcion = await registro.pushManager.getSubscription()
     if (suscripcion) await suscripcion.unsubscribe()
     await setDoc(
-      doc(obtenerDb(), 'usuarios', uid, 'estado', 'avisos'),
-      { endpoint: null, claves: {}, actualizado: Date.now() },
+      doc(obtenerDb(), 'avisos', uid),
+      { endpoint: '', claves: {}, actualizado: Date.now() },
       { merge: true },
     )
   } catch {
     /* si no habia nada suscrito, no pasa nada */
+  }
+}
+
+/**
+ * Deja en `avisos/{uid}` lo MINIMO que el servidor necesita para decidir si
+ * mandar un empujon. Nada de peso, ni IMC, ni fotos: solo a que telefono
+ * avisar, a que hora duerme, cuanta agua lleva hoy y cuando fue el ultimo
+ * trago. Se llama al abrir la app y cada vez que se registra agua.
+ */
+export async function sincronizarAvisos(
+  uid: string,
+  datos: {
+    activo: boolean
+    horaDespertar: string
+    horaDormir: string
+    metaMl: number
+    totalHoyMl: number
+    dia: string
+    ultimoTrago: number | null
+    nombreMascota: string
+  },
+): Promise<void> {
+  try {
+    await setDoc(
+      doc(obtenerDb(), 'avisos', uid),
+      {
+        ...datos,
+        ultimoTrago: datos.ultimoTrago ?? 0,
+        desfaseMinutos: new Date().getTimezoneOffset(),
+        actualizado: Date.now(),
+      },
+      { merge: true },
+    )
+  } catch {
+    // Si falla no pasa nada grave: el aviso simplemente sale con datos un
+    // poquito viejos la proxima vez.
   }
 }
 

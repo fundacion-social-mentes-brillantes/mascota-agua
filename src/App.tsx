@@ -23,6 +23,7 @@ import Ajustes from './pantallas/Ajustes'
 import RegistrarAgua from './componentes/RegistrarAgua'
 import Cargando from './componentes/Cargando'
 import { useRecordatorios } from './lib/recordatorios'
+import { sincronizarAvisos } from './lib/push'
 
 type Seccion = 'casa' | 'linea' | 'charla' | 'tienda' | 'ajustes'
 
@@ -128,6 +129,22 @@ export default function App() {
       vivo = false
     }
   }, [usuario, dia])
+
+  // Le deja al servidor lo justo para saber si mandar un "tengo sed".
+  useEffect(() => {
+    if (!usuario || !perfil || !mascota || !estado) return
+    const ultimo = registros.reduce((mayor, r) => Math.max(mayor, r.hora), 0)
+    sincronizarAvisos(usuario.uid, {
+      activo: perfil.recordatoriosActivos,
+      horaDespertar: perfil.horaDespertar,
+      horaDormir: perfil.horaDormir,
+      metaMl: perfil.metaMl,
+      totalHoyMl: estado.totalHoyMl,
+      dia,
+      ultimoTrago: ultimo || null,
+      nombreMascota: mascota.nombre,
+    })
+  }, [usuario, perfil, mascota, estado, registros, dia])
 
   const { ayer, racha } = useMemo(() => {
     const hoy = diaDe()

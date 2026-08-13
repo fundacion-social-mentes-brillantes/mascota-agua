@@ -2,10 +2,8 @@ rules_version = '2';
 
 // Mascota de Agua — reglas de seguridad.
 //
-// Regla unica y estricta: cada persona SOLO puede leer y escribir lo suyo.
-// No hay ninguna coleccion publica ni compartida. Si manana se agrega algo
-// compartido, se agrega su propio match con su propia condicion; nunca se
-// abre esta.
+// Regla base: cada persona SOLO puede leer y escribir lo suyo. No hay ninguna
+// coleccion publica. La unica excepcion esta abajo, y esta acotada al hueso.
 service cloud.firestore {
   match /databases/{database}/documents {
 
@@ -14,15 +12,35 @@ service cloud.firestore {
       return request.auth != null && request.auth.uid == uid;
     }
 
+    // La identidad tecnica que reparte los avisos de "tengo sed". No es una
+    // persona: es el servidor. Se uso una cuenta robot y no una clave de
+    // cuenta de servicio porque la organizacion las tiene prohibidas, y
+    // porque asi el permiso queda mucho mas chiquito.
+    function esRobotDeAvisos() {
+      return request.auth != null && request.auth.uid == 'ESSJeXDWsOao5K0YcPHiJ3gHuKJ3';
+    }
+
     // El perfil de la persona: nombre, edad, peso, altura, meta de agua.
+    // Aqui el robot NO entra. Nunca ve el peso ni el IMC de nadie.
     match /usuarios/{uid} {
       allow read, write: if esDueno(uid);
 
-      // Todo lo que cuelga del perfil (mascota, registros, dias, chat)
-      // hereda la misma condicion.
       match /{documento=**} {
         allow read, write: if esDueno(uid);
       }
+    }
+
+    // Lo MINIMO para poder mandar un aviso: a que telefono, a que hora
+    // duerme, cuanta agua lleva y cuando fue el ultimo trago. Nada mas.
+    match /avisos/{uid} {
+      allow read, write: if esDueno(uid);
+
+      // El robot puede mirar, pero no tocar...
+      allow read: if esRobotDeAvisos();
+      // ...salvo un solo campo: la marca de cuando aviso por ultima vez, que
+      // es lo que evita que moleste dos veces seguidas.
+      allow update: if esRobotDeAvisos()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['ultimoAviso']);
     }
 
     // Cualquier otra ruta queda cerrada.
