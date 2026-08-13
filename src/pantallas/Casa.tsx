@@ -1,5 +1,5 @@
 import { AlertTriangle, Clock, Droplets, Heart } from 'lucide-react'
-import Mascota from '../componentes/Mascota'
+import Mascota from '../componentes/MascotaViva'
 import Anillo from '../componentes/Anillo'
 import { saludoDeLaMascota } from '../lib/frases'
 import { tieneHambre } from '../lib/tienda'
@@ -62,7 +62,7 @@ export default function Casa({
           hidratacion={estado.hidratacion}
           sombrero={mascota.sombrero}
           accesorio={mascota.accesorio}
-          tamano={260}
+          tamano={300}
         />
         {hambre && (
           <span

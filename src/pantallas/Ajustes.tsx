@@ -6,7 +6,7 @@ import { borrarTodasLasFotos, contarFotos } from '../lib/fotos'
 import { calcularMeta } from '../lib/hidratacion'
 import { evaluarImc, fraseMundial } from '../lib/imc'
 import { estadoDeLosAvisos, pedirPermisoAvisos } from '../lib/recordatorios'
-import MascotaDibujo from '../componentes/Mascota'
+import MascotaDibujo from '../componentes/MascotaViva'
 import type { Actividad, Clima, EspecieMascota, Mascota, Perfil } from '../lib/tipos'
 
 const ACTIVIDADES: { id: Actividad; titulo: string }[] = [

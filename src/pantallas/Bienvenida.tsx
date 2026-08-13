@@ -14,7 +14,7 @@ import type {
   Perfil,
   Sexo,
 } from '../lib/tipos'
-import MascotaDibujo from '../componentes/Mascota'
+import MascotaDibujo from '../componentes/MascotaViva'
 
 const ESPECIES: { id: EspecieMascota; nombre: string }[] = [
   { id: 'gota', nombre: 'Gota' },
