@@ -288,7 +288,7 @@ export default function Bienvenida({
                 )}
                 <p className="mt-3 text-xs text-[var(--color-texto-suave)]/80">
                   Esta app no es para bajar de peso. El peso entra solo porque el agua que
-                  necesitas depende de el.
+                  necesitas depende de él.
                 </p>
               </div>
             )}
@@ -463,7 +463,7 @@ export default function Bienvenida({
                 <Renglon key={extra.motivo} texto={extra.motivo} ml={extra.ml} />
               ))}
               <p className="mt-3 text-xs leading-relaxed text-[var(--color-texto-suave)]">
-                Ya viene descontada la cuarta parte del agua que entra con la comida: sopas,
+                Ya viene descontada la quinta parte del agua que entra con la comida: sopas,
                 frutas y verduras también hidratan.
               </p>
             </div>

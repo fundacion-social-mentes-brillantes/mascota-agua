@@ -7,7 +7,21 @@ import { calcularMeta } from '../lib/hidratacion'
 import { evaluarImc, fraseMundial } from '../lib/imc'
 import { estadoDeLosAvisos, pedirPermisoAvisos } from '../lib/recordatorios'
 import MascotaDibujo from '../componentes/Mascota'
-import type { EspecieMascota, Mascota, Perfil } from '../lib/tipos'
+import type { Actividad, Clima, EspecieMascota, Mascota, Perfil } from '../lib/tipos'
+
+const ACTIVIDADES: { id: Actividad; titulo: string }[] = [
+  { id: 'poca', titulo: 'Poca' },
+  { id: 'moderada', titulo: 'Moderada' },
+  { id: 'alta', titulo: 'Alta' },
+  { id: 'muy-alta', titulo: 'Muy alta' },
+]
+
+const CLIMAS: { id: Clima; titulo: string }[] = [
+  { id: 'frio', titulo: 'Frío' },
+  { id: 'templado', titulo: 'Templado' },
+  { id: 'calor', titulo: 'Caliente y seco' },
+  { id: 'calor-humedo', titulo: 'Caliente y húmedo' },
+]
 
 const ESPECIES: { id: EspecieMascota; nombre: string }[] = [
   { id: 'gota', nombre: 'Gota' },
@@ -34,6 +48,9 @@ export default function Ajustes({
 }) {
   const [peso, setPeso] = useState(String(perfil.pesoKg))
   const [altura, setAltura] = useState(String(perfil.alturaCm))
+  const [actividad, setActividad] = useState(perfil.actividad)
+  const [clima, setClima] = useState(perfil.clima)
+  const [altitudAlta, setAltitudAlta] = useState(perfil.altitudAlta)
   const [metaManual, setMetaManual] = useState(String(perfil.metaManualMl ?? ''))
   const [despertar, setDespertar] = useState(perfil.horaDespertar)
   const [dormir, setDormir] = useState(perfil.horaDormir)
@@ -69,9 +86,9 @@ export default function Ajustes({
         edad: perfil.edad,
         sexo: perfil.sexo,
         pesoKg: pesoNum,
-        actividad: perfil.actividad,
-        clima: perfil.clima,
-        altitudAlta: perfil.altitudAlta,
+        actividad,
+        clima,
+        altitudAlta,
         etapa: perfil.etapa,
         condiciones: perfil.condiciones,
       })
@@ -83,6 +100,9 @@ export default function Ajustes({
           ...perfil,
           pesoKg: pesoNum,
           alturaCm: alturaNum,
+          actividad,
+          clima,
+          altitudAlta,
           horaDespertar: despertar,
           horaDormir: dormir,
           recordatoriosActivos: avisos,
@@ -254,6 +274,42 @@ export default function Ajustes({
         )}
       </Bloque>
 
+      <Bloque titulo="Cómo es tu día">
+        <p className="mb-2 text-xs text-[var(--color-texto-suave)]">Actividad física</p>
+        <div className="mb-4 grid grid-cols-2 gap-2">
+          {ACTIVIDADES.map((a) => (
+            <Opcion key={a.id} activa={actividad === a.id} onClick={() => setActividad(a.id)}>
+              {a.titulo}
+            </Opcion>
+          ))}
+        </div>
+        <p className="mb-2 text-xs text-[var(--color-texto-suave)]">Clima donde vives</p>
+        <div className="mb-4 grid grid-cols-2 gap-2">
+          {CLIMAS.map((c) => (
+            <Opcion key={c.id} activa={clima === c.id} onClick={() => setClima(c.id)}>
+              {c.titulo}
+            </Opcion>
+          ))}
+        </div>
+        <label className="flex items-start gap-3 rounded-2xl bg-[var(--color-fondo-2)] p-3.5">
+          <input
+            type="checkbox"
+            checked={altitudAlta}
+            onChange={(e) => setAltitudAlta(e.target.checked)}
+            className="mt-0.5 h-5 w-5 accent-[var(--color-agua)]"
+          />
+          <span className="text-sm">
+            Vivo a más de 2.000 metros de altura
+            <span className="block text-xs text-[var(--color-texto-suave)]">
+              Bogotá, Tunja, Pasto, Manizales.
+            </span>
+          </span>
+        </label>
+        <p className="mt-3 text-xs text-[var(--color-texto-suave)]">
+          Al guardar, la meta se vuelve a calcular con esto.
+        </p>
+      </Bloque>
+
       <Bloque titulo="Tu meta de agua">
         <p className="mb-3 text-sm">
           Ahora mismo: <strong className="text-[var(--color-agua-clara)]">{perfil.metaMl} ml</strong>{' '}
@@ -412,6 +468,30 @@ function Bloque({ titulo, children }: { titulo: string; children: React.ReactNod
       <h2 className="mb-3 text-sm font-bold">{titulo}</h2>
       {children}
     </section>
+  )
+}
+
+function Opcion({
+  activa,
+  onClick,
+  children,
+}: {
+  activa: boolean
+  onClick: () => void
+  children: React.ReactNode
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`rounded-2xl border px-3 py-2.5 text-sm transition ${
+        activa
+          ? 'border-[var(--color-agua)] bg-[var(--color-agua)]/12 font-medium'
+          : 'border-[var(--color-borde)] bg-[var(--color-fondo-2)]'
+      }`}
+    >
+      {children}
+    </button>
   )
 }
 
