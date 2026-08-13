@@ -1,9 +1,18 @@
-import { AlertTriangle, Clock, Droplets, Heart } from 'lucide-react'
+import { useMemo } from 'react'
+import { AlertTriangle, Clock, Droplets, Heart, Volume2 } from 'lucide-react'
+import { saludoAlEntrar } from '../lib/personalidad'
+import { VOZ_POR_DEFECTO, hablar, paraLeerEnVoz } from '../lib/voz'
 import Mascota from '../componentes/MascotaViva'
 import Anillo from '../componentes/Anillo'
 import { saludoDeLaMascota } from '../lib/frases'
 import { tieneHambre } from '../lib/tienda'
-import type { EstadoCuerpo, Mascota as MascotaTipo, Perfil, Registro } from '../lib/tipos'
+import type {
+  EstadoCuerpo,
+  Mascota as MascotaTipo,
+  Perfil,
+  Registro,
+  ResumenDia,
+} from '../lib/tipos'
 
 function horaCorta(hora: number): string {
   return new Date(hora).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })
@@ -22,16 +31,32 @@ export default function Casa({
   mascota,
   estado,
   registros,
+  ayer,
+  racha,
   alRegistrar,
 }: {
   perfil: Perfil
   mascota: MascotaTipo
   estado: EstadoCuerpo
   registros: Registro[]
+  /** El resumen de ayer, para que la mascota pueda acordarse. */
+  ayer: ResumenDia | null
+  /** Días seguidos cumpliendo la meta. */
+  racha: number
   alRegistrar: () => void
 }) {
   const hambre = tieneHambre(mascota.ultimaComida)
   const faltan = Math.max(0, estado.metaMl - estado.totalHoyMl)
+
+  // El saludo se calcula una vez por estado, no en cada pintado, para que no
+  // cambie de frase mientras la persona lo esta leyendo.
+  const saludo = useMemo(
+    () => saludoAlEntrar(perfil, estado, ayer, racha),
+    [perfil, estado, ayer, racha],
+  )
+
+  const alEscucharSaludo = () =>
+    hablar(paraLeerEnVoz(saludo), perfil.voz ?? VOZ_POR_DEFECTO, estado.nivel)
 
   return (
     <div className="mx-auto max-w-lg px-5 pt-5">
@@ -53,6 +78,20 @@ export default function Casa({
           <p className="text-sm text-[var(--color-alerta)]">{estado.alertaExceso}</p>
         </div>
       )}
+
+      {/* Lo que la mascota dice por su cuenta al abrir la app. */}
+      <div className="relative mb-1 rounded-3xl rounded-bl-md border border-[var(--color-borde)] bg-[var(--color-tarjeta)] px-4 py-3">
+        <p className="text-sm leading-relaxed">{saludo}</p>
+        <button
+          type="button"
+          onClick={alEscucharSaludo}
+          className="mt-1.5 flex items-center gap-1.5 text-xs text-[var(--color-texto-suave)]"
+          aria-label="Escuchar"
+        >
+          <Volume2 size={13} />
+          Escuchar
+        </button>
+      </div>
 
       <div className="relative flex justify-center py-2">
         <Mascota

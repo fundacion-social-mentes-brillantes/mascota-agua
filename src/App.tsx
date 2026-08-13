@@ -8,10 +8,11 @@ import {
   escucharPerfil,
   escucharRegistrosDelDia,
   guardarMascota,
+  leerHistorico,
 } from './lib/almacen'
 import { calcularEstadoCuerpo } from './lib/hidratacion'
 import { describirCuerpo } from './lib/frases'
-import type { Mascota, Perfil, Registro } from './lib/tipos'
+import type { Mascota, Perfil, Registro, ResumenDia } from './lib/tipos'
 import Entrar from './pantallas/Entrar'
 import Bienvenida from './pantallas/Bienvenida'
 import Casa from './pantallas/Casa'
@@ -113,6 +114,32 @@ export default function App() {
     return { ...base, loQuePasa: describirCuerpo(base) }
   }, [perfil, registros])
 
+  // El historial sirve para que la mascota se acuerde de ayer y de la racha.
+  const [historico, setHistorico] = useState<ResumenDia[]>([])
+  useEffect(() => {
+    if (!usuario) return
+    let vivo = true
+    leerHistorico(usuario.uid, 30)
+      .then((dias) => {
+        if (vivo) setHistorico(dias)
+      })
+      .catch(() => {})
+    return () => {
+      vivo = false
+    }
+  }, [usuario, dia])
+
+  const { ayer, racha } = useMemo(() => {
+    const hoy = diaDe()
+    const anteriores = historico.filter((d) => d.dia !== hoy)
+    let seguidos = 0
+    for (const d of anteriores) {
+      if (d.metaMl > 0 && d.totalMl >= d.metaMl) seguidos += 1
+      else break
+    }
+    return { ayer: anteriores[0] ?? null, racha: seguidos }
+  }, [historico])
+
   useRecordatorios(perfil, estado, mascota?.nombre ?? 'Tu mascota')
 
   const todoListo = perfilCargadoDe === usuario?.uid && mascotaCargadaDe === usuario?.uid
@@ -175,6 +202,8 @@ export default function App() {
             mascota={mascota}
             estado={estado}
             registros={registros}
+            ayer={ayer}
+            racha={racha}
             alRegistrar={abrirRegistro}
           />
         )}
