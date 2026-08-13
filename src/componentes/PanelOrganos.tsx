@@ -26,18 +26,31 @@ export default function PanelOrganos({ estado }: { estado: EstadoCuerpo }) {
   const organos = useMemo(() => organosAhora(estado), [estado])
   const resumen = useMemo(() => resumenDelCuerpo(estado), [estado])
   const [abierto, setAbierto] = useState<string | null>(null)
+  // Plegado por defecto: el resumen se ve siempre, y el detalle se abre
+  // cuando la persona quiera. Asi el chat no queda enterrado bajo la lista.
+  const [desplegado, setDesplegado] = useState(false)
 
   return (
     <section className="mb-4 rounded-3xl border border-[var(--color-borde)] bg-[var(--color-tarjeta)] p-5">
-      <div className="mb-1 flex items-baseline justify-between">
-        <h2 className="text-sm font-bold">Mis órganos ahora mismo</h2>
-        <span className="text-xs text-[var(--color-texto-suave)]">
-          {estado.totalHoyMl} / {estado.metaMl} ml
+      <button
+        type="button"
+        onClick={() => setDesplegado((v) => !v)}
+        className="w-full text-left"
+      >
+        <div className="mb-1 flex items-baseline justify-between gap-2">
+          <h2 className="text-sm font-bold">Mis órganos ahora mismo</h2>
+          <span className="shrink-0 text-xs text-[var(--color-texto-suave)]">
+            {estado.totalHoyMl} / {estado.metaMl} ml
+          </span>
+        </div>
+        <p className="text-xs text-[var(--color-texto-suave)]">{resumen}</p>
+        <span className="mt-2 flex items-center gap-1 text-[11px] text-[var(--color-agua-clara)]">
+          <ChevronDown size={13} className={desplegado ? 'rotate-180' : ''} />
+          {desplegado ? 'Ocultar los 8 órganos' : 'Ver los 8 órganos uno por uno'}
         </span>
-      </div>
-      <p className="mb-4 text-xs text-[var(--color-texto-suave)]">{resumen}</p>
+      </button>
 
-      <ul className="space-y-2.5">
+      <ul className={`space-y-2.5 ${desplegado ? 'mt-4' : 'hidden'}`}>
         {organos.map((organo) => {
           const colores = COLOR[organo.estado]
           const desplegado = abierto === organo.id
@@ -89,7 +102,9 @@ export default function PanelOrganos({ estado }: { estado: EstadoCuerpo }) {
         })}
       </ul>
 
-      <p className="mt-4 text-[11px] leading-relaxed text-[var(--color-texto-suave)]/70">
+      <p
+        className={`mt-4 text-[11px] leading-relaxed text-[var(--color-texto-suave)]/70 ${desplegado ? '' : 'hidden'}`}
+      >
         Esto se calcula con el agua que llevas hoy y el tiempo que llevas sin beber. Es una
         estimación con base en fisiología, no una medición de tu cuerpo: para eso está un
         profesional de la salud.

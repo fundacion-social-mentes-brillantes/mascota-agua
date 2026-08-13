@@ -62,7 +62,7 @@ export default function Charla({
 
       <PanelOrganos estado={estado} />
 
-      <div className="flex-1 space-y-3">
+      <div className="flex-1 space-y-3 pb-2">
         <Burbuja de="mascota">{saludoInicial(mascota, estado)}</Burbuja>
 
         {mensajes.map((mensaje) => (
