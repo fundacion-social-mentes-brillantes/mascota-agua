@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Bell, LogOut, ShieldCheck, Trash2, Volume2 } from 'lucide-react'
+import { Bell, LogOut, ShieldCheck, Trash2 } from 'lucide-react'
 import { salir, type User } from '../lib/firebase'
 import { borrarChat, borrarTodo, guardarPerfil } from '../lib/almacen'
 import { borrarTodasLasFotos, contarFotos } from '../lib/fotos'
@@ -7,7 +7,6 @@ import { calcularMeta } from '../lib/hidratacion'
 import { evaluarImc, fraseMundial } from '../lib/imc'
 import { estadoDeLosAvisos } from '../lib/recordatorios'
 import { estaSuscrito, suscribirAvisos } from '../lib/push'
-import { VOCES, VOZ_POR_DEFECTO, hablar } from '../lib/voz'
 import MascotaDibujo from '../componentes/MascotaViva'
 import type { Actividad, Clima, EspecieMascota, Mascota, Perfil } from '../lib/tipos'
 
@@ -64,27 +63,12 @@ export default function Ajustes({
   const [confirmarBorrado, setConfirmarBorrado] = useState(false)
 
   const [nombreMascota, setNombreMascota] = useState(mascota.nombre)
-  const [vozActiva, setVozActiva] = useState(perfil.vozActiva !== false)
-  const [voz, setVoz] = useState(perfil.voz ?? VOZ_POR_DEFECTO)
-  const [probandoVoz, setProbandoVoz] = useState(false)
   const [suscrito, setSuscrito] = useState(false)
   const [ocupadoAvisos, setOcupadoAvisos] = useState(false)
 
   useEffect(() => {
     estaSuscrito().then(setSuscrito)
   }, [])
-
-  async function probarVoz(cual: string) {
-    setVoz(cual)
-    setProbandoVoz(true)
-    const sono = await hablar(
-      `Hola ${perfil.nombre}. Soy ${nombreMascota || mascota.nombre}, y esta es mi voz.`,
-      cual,
-      'bien',
-    )
-    setProbandoVoz(false)
-    if (!sono) setMensaje('No se pudo reproducir la voz. Puede que falte configurarla.')
-  }
 
   useEffect(() => {
     contarFotos().then(setFotos)
@@ -129,8 +113,6 @@ export default function Ajustes({
           horaDespertar: despertar,
           horaDormir: dormir,
           recordatoriosActivos: avisos,
-          vozActiva,
-          voz,
           metaMl: usaManual ? manual : calculada.metaMl,
           ...(usaManual ? { metaManualMl: manual } : {}),
         },
@@ -315,47 +297,6 @@ export default function Ajustes({
             IMC {imc.imc} · {imc.etiqueta}. {fraseMundial(imc.percentilMundial)}
           </p>
         )}
-      </Bloque>
-
-      <Bloque titulo="La voz de tu mascota">
-        <label className="mb-3 flex items-center gap-3 rounded-2xl bg-[var(--color-fondo-2)] p-3.5">
-          <input
-            type="checkbox"
-            checked={vozActiva}
-            onChange={(e) => setVozActiva(e.target.checked)}
-            className="h-5 w-5 accent-[var(--color-agua)]"
-          />
-          <span className="text-sm">
-            Que hable en voz alta cuando me responda
-            <span className="block text-xs text-[var(--color-texto-suave)]">
-              Igual puedes tocar "Escuchar" en cualquier mensaje.
-            </span>
-          </span>
-        </label>
-        <p className="mb-2 text-xs text-[var(--color-texto-suave)]">
-          Toca una para oírla {probandoVoz && '· sonando...'}
-        </p>
-        <div className="grid gap-2">
-          {VOCES.map((v) => (
-            <button
-              key={v.id}
-              type="button"
-              onClick={() => probarVoz(v.id)}
-              className={`flex items-center gap-3 rounded-2xl border px-4 py-3 text-left transition ${
-                voz === v.id
-                  ? 'border-[var(--color-agua)] bg-[var(--color-agua)]/12'
-                  : 'border-[var(--color-borde)] bg-[var(--color-fondo-2)]'
-              }`}
-            >
-              <Volume2 size={16} className="shrink-0 text-[var(--color-agua-clara)]" />
-              <span className="flex-1">
-                <span className="block text-sm font-medium">{v.nombre}</span>
-                <span className="block text-xs text-[var(--color-texto-suave)]">{v.nota}</span>
-              </span>
-              {voz === v.id && <span className="text-xs text-[var(--color-agua-clara)]">usando</span>}
-            </button>
-          ))}
-        </div>
       </Bloque>
 
       <Bloque titulo="Cómo es tu día">

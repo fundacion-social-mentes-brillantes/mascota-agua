@@ -1,5 +1,6 @@
 import { Suspense, lazy } from 'react'
 import MascotaPlana from './Mascota'
+import { expresionDe, type Momento } from '../lib/expresiones'
 import type { EspecieMascota, NivelCuerpo } from '../lib/tipos'
 
 // Envoltorio de la mascota.
@@ -31,6 +32,7 @@ export default function MascotaViva({
   color,
   nivel,
   hidratacion,
+  momento = 'nada',
   sombrero,
   accesorio,
   tamano = 300,
@@ -39,10 +41,13 @@ export default function MascotaViva({
   color: string
   nivel: NivelCuerpo
   hidratacion: number
+  /** Lo que acaba de pasar: le cambia la cara por un rato. */
+  momento?: Momento
   sombrero?: string | null
   accesorio?: string | null
   tamano?: number
 }) {
+  const expresion = expresionDe(nivel, momento)
   // No hace falta estado ni efecto: si el telefono puede con 3D o no, no
   // cambia mientras la app esta abierta, y la respuesta se guarda la primera
   // vez que se pregunta.
@@ -69,6 +74,7 @@ export default function MascotaViva({
         color={color}
         nivel={nivel}
         hidratacion={hidratacion}
+        expresion={expresion}
         sombrero={sombrero}
         accesorio={accesorio}
         alto={tamano}

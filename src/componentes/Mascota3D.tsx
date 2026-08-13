@@ -3,7 +3,10 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { ContactShadows } from '@react-three/drei'
 import * as THREE from 'three'
 import { ALTO, geometriaCuerpo, radioEnAltura, recetaDe } from './criaturas'
+import { rasgosDe, type Expresion } from '../lib/expresiones'
 import type { EspecieMascota, NivelCuerpo } from '../lib/tipos'
+
+type Rasgos = ReturnType<typeof rasgosDe>
 
 // La mascota en 3D.
 //
@@ -87,6 +90,8 @@ function Telon() {
   )
 }
 
+const NEGRO_OJO = '#0b1c2b'
+
 /** Ojo grande y brillante. Aqui es donde nace la empatia. */
 function Ojo({
   x,
@@ -95,6 +100,8 @@ function Ojo({
   radio,
   cerrado,
   mirada,
+  forma,
+  chispas,
 }: {
   x: number
   y: number
@@ -102,6 +109,8 @@ function Ojo({
   radio: number
   cerrado: number
   mirada: THREE.Vector2
+  forma: Rasgos['ojos']
+  chispas: boolean
 }) {
   const grupo = useRef<THREE.Group>(null)
 
@@ -113,12 +122,26 @@ function Ojo({
     grupo.current.position.y = y + mirada.y * radio * 0.12
   })
 
+  // Ojo feliz o dormido: un arco, no una bolita. Cambia toda la cara.
+  if (forma === 'arco' || forma === 'cerrados') {
+    const haciaArriba = forma === 'arco'
+    return (
+      <group position={[x, y, z]}>
+        <mesh rotation={[0, 0, haciaArriba ? 0 : Math.PI]}>
+          <torusGeometry args={[radio * 0.92, radio * 0.2, 10, 28, Math.PI]} />
+          <meshStandardMaterial color={NEGRO_OJO} roughness={0.3} />
+        </mesh>
+      </group>
+    )
+  }
+
+  const grande = forma === 'enormes' ? 1.16 : 1
   return (
-    <group ref={grupo} position={[x, y, z]}>
+    <group ref={grupo} position={[x, y, z]} scale={[grande, grande, grande]}>
       <mesh castShadow>
         <sphereGeometry args={[radio, 32, 32]} />
         <meshPhysicalMaterial
-          color="#0b1c2b"
+          color={NEGRO_OJO}
           roughness={0.04}
           clearcoat={1}
           clearcoatRoughness={0.02}
@@ -134,32 +157,160 @@ function Ojo({
         <sphereGeometry args={[radio * 0.14, 12, 12]} />
         <meshBasicMaterial color="#bfe8ff" transparent opacity={0.75} />
       </mesh>
+      {chispas && (
+        <mesh position={[radio * 0.1, radio * 0.05, radio * 0.78]}>
+          <sphereGeometry args={[radio * 0.2, 12, 12]} />
+          <meshBasicMaterial color="#ffffff" transparent opacity={0.85} />
+        </mesh>
+      )}
     </group>
   )
 }
 
-function Boca({ y, z, nivel, radio }: { y: number; z: number; nivel: NivelCuerpo; radio: number }) {
-  const feliz = nivel === 'pleno' || nivel === 'bien'
-  const recto = nivel === 'atento'
+/** Las cejas. Son dos palitos, y hacen la mitad del trabajo de la cara. */
+function Cejas({
+  y,
+  z,
+  separacion,
+  radio,
+  forma,
+}: {
+  y: number
+  z: number
+  separacion: number
+  radio: number
+  forma: Rasgos['cejas']
+}) {
+  if (forma === 'ninguna') return null
+  const alto = forma === 'levantadas' ? radio * 1.5 : radio * 1.15
+  // Preocupadas: las puntas de adentro hacia arriba. Caidas: al reves.
+  const giro = forma === 'preocupadas' ? 0.42 : forma === 'caidas' ? -0.38 : 0.05
+
+  return (
+    <group position={[0, y + alto, z]}>
+      {[-1, 1].map((lado) => (
+        <mesh
+          key={lado}
+          position={[lado * separacion, 0, 0]}
+          rotation={[0, 0, lado * giro]}
+        >
+          <boxGeometry args={[radio * 1.25, radio * 0.16, radio * 0.16]} />
+          <meshStandardMaterial color={NEGRO_OJO} roughness={0.35} />
+        </mesh>
+      ))}
+    </group>
+  )
+}
+
+function Boca({ y, z, forma, radio }: { y: number; z: number; forma: Rasgos['boca']; radio: number }) {
   const ancho = radio * 1.15
 
-  if (recto) {
+  if (forma === 'recta') {
     return (
       <mesh position={[0, y, z]}>
         <boxGeometry args={[ancho * 0.9, radio * 0.16, radio * 0.16]} />
-        <meshStandardMaterial color="#0b1c2b" roughness={0.3} />
+        <meshStandardMaterial color={NEGRO_OJO} roughness={0.3} />
       </mesh>
     )
   }
 
+  if (forma === 'o') {
+    return (
+      <mesh position={[0, y, z]}>
+        <sphereGeometry args={[radio * 0.42, 20, 20]} />
+        <meshStandardMaterial color={NEGRO_OJO} roughness={0.35} />
+      </mesh>
+    )
+  }
+
+  if (forma === 'ondulada') {
+    return (
+      <group position={[0, y, z]}>
+        {[-1, 1].map((lado) => (
+          <mesh key={lado} position={[lado * ancho * 0.28, 0, 0]} rotation={[0, 0, lado * Math.PI]}>
+            <torusGeometry args={[ancho * 0.28, radio * 0.085, 10, 24, Math.PI]} />
+            <meshStandardMaterial color={NEGRO_OJO} roughness={0.3} />
+          </mesh>
+        ))}
+      </group>
+    )
+  }
+
+  if (forma === 'sonrisa-abierta') {
+    return (
+      <group position={[0, y, z]}>
+        <mesh rotation={[0, 0, Math.PI]}>
+          <sphereGeometry args={[ancho * 0.55, 24, 18, 0, Math.PI * 2, 0, Math.PI / 2]} />
+          <meshStandardMaterial color={NEGRO_OJO} roughness={0.35} side={THREE.DoubleSide} />
+        </mesh>
+        {/* La lengüita: es lo que la vuelve simpatica y no una boca vacia. */}
+        <mesh position={[0, -ancho * 0.28, ancho * 0.1]} scale={[1, 0.6, 0.5]}>
+          <sphereGeometry args={[ancho * 0.3, 16, 16]} />
+          <meshStandardMaterial color="#ff8fa8" roughness={0.5} />
+        </mesh>
+      </group>
+    )
+  }
+
+  // sonrisa o triste: el mismo arco, volteado.
+  const feliz = forma === 'sonrisa'
   return (
-    <mesh
-      position={[0, y, z]}
-      rotation={[0, 0, feliz ? Math.PI * 1.11 : Math.PI * 0.11]}
-    >
+    <mesh position={[0, y, z]} rotation={[0, 0, feliz ? Math.PI * 1.11 : Math.PI * 0.11]}>
       <torusGeometry args={[ancho * 0.5, radio * 0.09, 12, 40, Math.PI * 0.78]} />
-      <meshStandardMaterial color="#0b1c2b" roughness={0.3} />
+      <meshStandardMaterial color={NEGRO_OJO} roughness={0.3} />
     </mesh>
+  )
+}
+
+/** Burbujitas que suben por dentro del agua. Es lo que la vuelve liquida. */
+function Burbujas({ nivel, color }: { nivel: React.RefObject<number>; color: string }) {
+  const grupo = useRef<THREE.Group>(null)
+  const semillas = useMemo(
+    () =>
+      Array.from({ length: 7 }, (_, i) => ({
+        x: Math.sin(i * 2.7) * 0.42,
+        z: Math.cos(i * 1.9) * 0.34,
+        radio: 0.028 + (i % 3) * 0.016,
+        velocidad: 0.16 + (i % 4) * 0.06,
+        desfase: i * 0.37,
+      })),
+    [],
+  )
+
+  useFrame((estado) => {
+    if (!grupo.current) return
+    const t = estado.clock.elapsedTime
+    const tope = nivel.current ?? 0
+    grupo.current.children.forEach((burbuja, i) => {
+      const s = semillas[i]
+      // Sube desde el fondo hasta la superficie y vuelve a empezar.
+      const avance = ((t * s.velocidad + s.desfase) % 1)
+      burbuja.position.y = 0.06 + avance * Math.max(0.05, tope - 0.12)
+      burbuja.position.x = s.x + Math.sin(t * 1.3 + s.desfase) * 0.03
+      const visible = tope > 0.25
+      burbuja.visible = visible
+      const escala = visible ? 1 - Math.abs(avance - 0.5) * 0.5 : 0
+      burbuja.scale.setScalar(escala)
+    })
+  })
+
+  return (
+    <group ref={grupo}>
+      {semillas.map((s, i) => (
+        <mesh key={i} position={[s.x, 0.1, s.z]}>
+          <sphereGeometry args={[s.radio, 10, 10]} />
+          <meshPhysicalMaterial
+            color={color}
+            roughness={0}
+            transmission={0.9}
+            thickness={0.1}
+            ior={1.2}
+            transparent
+            opacity={0.6}
+          />
+        </mesh>
+      ))}
+    </group>
   )
 }
 
@@ -368,6 +519,7 @@ function Criatura({
   color,
   nivel,
   hidratacion,
+  expresion,
   sombrero,
   accesorio,
 }: {
@@ -375,11 +527,13 @@ function Criatura({
   color: string
   nivel: NivelCuerpo
   hidratacion: number
+  expresion: Expresion
   sombrero?: string | null
   accesorio?: string | null
 }) {
   const grupo = useRef<THREE.Group>(null)
   const receta = recetaDe(especie)
+  const rasgos = rasgosDe(expresion)
   const { gl, pointer } = useThree()
 
   useCieloDeEstudio()
@@ -406,6 +560,8 @@ function Criatura({
   const [parpadeo, setParpadeo] = useState(0)
   const proximoParpadeo = useRef(2)
   const discoAgua = useRef<THREE.Mesh>(null)
+  const menisco = useRef<THREE.Mesh>(null)
+  const alturaAgua = useRef(0)
 
   useFrame((estado, delta) => {
     const t = estado.clock.elapsedTime
@@ -415,20 +571,41 @@ function Criatura({
     nivelSuave.current += (nivelObjetivo.current - nivelSuave.current) * Math.min(1, delta * 2.2)
     // Un vaiven minimo, como el agua de un vaso que acaban de poner.
     const vaiven = Math.sin(t * 1.6) * 0.012 + Math.sin(t * 2.7) * 0.006
-    planoAgua.constant = nivelSuave.current + vaiven
+    const altura = nivelSuave.current + vaiven
+    alturaAgua.current = altura
+
+    // Lo que de verdad la hace parecer liquida: la superficie se INCLINA,
+    // no solo sube y baja. Como el agua de un vaso al que uno mueve.
+    const inclinaX = Math.sin(t * 0.9) * 0.045
+    const inclinaZ = Math.cos(t * 1.15) * 0.038
+    planoAgua.normal.set(inclinaX, -1, inclinaZ).normalize()
+    planoAgua.constant = altura
+
+    const radio = radioEnAltura(especie, nivelSuave.current, ENCOGIDO_AGUA)
+    const seVe = nivelSuave.current > 0.06 && nivelSuave.current < ALTO * 0.95
 
     if (discoAgua.current) {
-      discoAgua.current.position.y = nivelSuave.current + vaiven
-      const r = radioEnAltura(especie, nivelSuave.current, ENCOGIDO_AGUA)
-      discoAgua.current.scale.setScalar(Math.max(0.02, r))
-      discoAgua.current.visible = nivelSuave.current > 0.06 && nivelSuave.current < ALTO * 0.95
+      discoAgua.current.position.y = altura
+      discoAgua.current.rotation.x = -Math.PI / 2 + inclinaZ
+      discoAgua.current.rotation.z = inclinaX
+      discoAgua.current.scale.setScalar(Math.max(0.02, radio))
+      discoAgua.current.visible = seVe
+    }
+
+    // El menisco: ese borde que sube por la pared del vaso.
+    if (menisco.current) {
+      menisco.current.position.y = altura
+      menisco.current.rotation.x = Math.PI / 2 + inclinaZ
+      menisco.current.rotation.z = inclinaX
+      menisco.current.scale.set(radio, radio, 1)
+      menisco.current.visible = seVe
     }
 
     if (grupo.current) {
-      // Respiracion: se infla y se desinfla como algo vivo. Cuando esta seca
-      // respira mas lento y se hunde un poquito.
-      const ritmo = seco ? 0.9 : 1.6
-      const fuerza = seco ? 0.012 : 0.03
+      // Respiracion: se infla y se desinfla como algo vivo. La energia sale
+      // de la expresion, asi que emocionada rebota y agotada casi no respira.
+      const ritmo = 0.9 + rasgos.energia * 0.7
+      const fuerza = 0.008 + rasgos.energia * 0.018
       const respirar = 1 + Math.sin(t * ritmo) * fuerza
       grupo.current.scale.set(respirar, 2 - respirar, respirar)
       grupo.current.position.y = seco ? -0.04 : Math.sin(t * ritmo * 0.5) * 0.035
@@ -447,9 +624,8 @@ function Criatura({
     }
   })
 
-  // En rojo los ojos quedan casi cerrados todo el tiempo: no es un gesto
-  // gracioso, es el cuerpo apagandose.
-  const cerrado = nivel === 'critico' ? Math.max(0.62, parpadeo) : parpadeo
+  // Los parpados a medio bajar son de la expresion; el parpadeo se suma.
+  const cerrado = Math.max(rasgos.parpado, parpadeo)
   const mirada = useMemo(() => new THREE.Vector2(), [])
   useFrame(() => {
     mirada.set(pointer.x, pointer.y)
@@ -493,6 +669,24 @@ function Criatura({
         />
       </mesh>
 
+      {/* El menisco: el aro donde el agua trepa por la pared. Sin esto la
+          superficie se ve cortada con tijera. */}
+      <mesh ref={menisco} rotation={[Math.PI / 2, 0, 0]}>
+        <torusGeometry args={[1, 0.035, 8, 48]} />
+        <meshPhysicalMaterial
+          color={color}
+          roughness={0}
+          transmission={0.75}
+          thickness={0.2}
+          ior={1.333}
+          transparent
+          opacity={0.9}
+        />
+      </mesh>
+
+      {/* Burbujitas subiendo */}
+      <Burbujas nivel={alturaAgua} color={color} />
+
       {/* El cuerpo: vidrio casi incoloro, para que se vea lo de adentro. */}
       <mesh geometry={geoCuerpo} castShadow>
         <meshPhysicalMaterial
@@ -524,19 +718,35 @@ function Criatura({
         radio={receta.ojos.radio}
         cerrado={cerrado}
         mirada={mirada}
+        forma={rasgos.ojos}
+        chispas={rasgos.chispas}
       />
       <Ojo
         x={receta.ojos.separacion}
         y={receta.ojos.y}
         z={receta.ojos.z}
         radio={receta.ojos.radio}
-        cerrado={cerrado}
+        // El guino cierra SOLO el ojo derecho.
+        cerrado={rasgos.ojos === 'guino' ? 1 : cerrado}
         mirada={mirada}
+        forma={rasgos.ojos === 'guino' ? 'arco' : rasgos.ojos}
+        chispas={rasgos.chispas}
       />
-      <Boca y={receta.bocaY} z={receta.ojos.z + 0.03} nivel={nivel} radio={receta.ojos.radio} />
+      <Cejas
+        y={receta.ojos.y + receta.ojos.radio * 0.5}
+        z={receta.ojos.z}
+        separacion={receta.ojos.separacion}
+        radio={receta.ojos.radio}
+        forma={rasgos.cejas}
+      />
+      <Boca
+        y={receta.bocaY}
+        z={receta.ojos.z + 0.03}
+        forma={rasgos.boca}
+        radio={receta.ojos.radio}
+      />
 
-      {/* Cachetes cuando esta a tope */}
-      {nivel === 'pleno' && (
+      {rasgos.cachetes && (
         <group>
           {[-1, 1].map((lado) => (
             <mesh key={lado} position={[lado * 0.62, receta.ojos.y - 0.3, 0.52]}>
@@ -547,8 +757,7 @@ function Criatura({
         </group>
       )}
 
-      {/* Gota de sudor cuando anda seca */}
-      {seco && (
+      {rasgos.sudor && (
         <mesh position={[0.68, receta.ojos.y + 0.22, 0.42]}>
           <sphereGeometry args={[0.1, 16, 16]} />
           <meshPhysicalMaterial
@@ -560,6 +769,18 @@ function Criatura({
           />
         </mesh>
       )}
+
+      {/* Los ZZZ de cuando esta dormida */}
+      {rasgos.zzz && (
+        <group position={[0.75, receta.ojos.y + 0.5, 0.3]}>
+          {[0, 1, 2].map((i) => (
+            <mesh key={i} position={[i * 0.16, i * 0.22, 0]} scale={0.9 - i * 0.2}>
+              <boxGeometry args={[0.16, 0.05, 0.05]} />
+              <meshBasicMaterial color="#bfe8ff" transparent opacity={0.8 - i * 0.2} />
+            </mesh>
+          ))}
+        </group>
+      )}
     </group>
   )
 }
@@ -569,6 +790,7 @@ export default function Mascota3D({
   color,
   nivel,
   hidratacion,
+  expresion,
   sombrero,
   accesorio,
   alto = 300,
@@ -577,6 +799,7 @@ export default function Mascota3D({
   color: string
   nivel: NivelCuerpo
   hidratacion: number
+  expresion: Expresion
   sombrero?: string | null
   accesorio?: string | null
   alto?: number
@@ -605,6 +828,7 @@ export default function Mascota3D({
           color={color}
           nivel={nivel}
           hidratacion={hidratacion}
+          expresion={expresion}
           sombrero={sombrero}
           accesorio={accesorio}
         />

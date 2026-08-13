@@ -44,9 +44,30 @@ const INSTRUCCIONES_FIJAS = [
   '- Si el bloque de estado dice CUIDADO MEDICO, no animas a tomar mas agua: acompanas, pero recuerdas que la cantidad correcta la define su medico.',
 ].join('\n')
 
+/**
+ * Instrucciones para las BURBUJAS: lo que la mascota suelta sola en la
+ * pantalla principal, sin que nadie le pregunte nada. Van aparte porque el
+ * tono es otro: aqui no responde, aqui piensa en voz alta.
+ */
+const INSTRUCCIONES_BURBUJA = [
+  'Eres el cuerpo de una persona, con cara y voz, dentro de una app para tomar agua.',
+  'Vas a soltar UN pensamiento tuyo, sin que nadie te haya preguntado nada.',
+  '',
+  'COMO ES ESE PENSAMIENTO:',
+  '- UNA sola frase. Dos como maximo, y cortas. Va en una burbujita chiquita.',
+  '- Espanol de Colombia, cercano, hablado. Nada de sonar a notificacion.',
+  '- En primera persona como el cuerpo: "estoy", "me falta", "mi rinon".',
+  '- Concreto: menciona la hora, los mililitros, las horas sin beber o el organo que se esta resintiendo. Nada de frases de cajon como "recuerda hidratarte".',
+  '- Puedes tener humor, quejarte, agradecer o insistir, segun como venga el dia.',
+  '- Nunca exageras para asustar. Si estas bien, lo dices y ya.',
+  '- No saludes con "Hola" cada vez: eres alguien que ya vive ahi.',
+  '',
+  'Responde SOLO la frase, sin comillas y sin explicar nada.',
+].join('\n')
+
 /** Lo que SI cambia en cada mensaje. Va despues del historial. */
 function estadoDeAhora(contexto) {
-  const { mascota, persona, hoy } = contexto
+  const { mascota, persona, hoy, organos } = contexto
   const horas =
     hoy.horasSinBeber === null ? 'todavia no ha tomado agua hoy' : `${hoy.horasSinBeber} horas`
 
@@ -58,6 +79,9 @@ function estadoDeAhora(contexto) {
     `- Nivel de agua de mi cuerpo: ${hoy.hidratacion} de 100 (estado: ${hoy.nivelDelCuerpo}).`,
     hoy.alertaExceso ? `- AVISO: ${hoy.alertaExceso}` : '',
     hoy.loQuePasa?.length ? `- Lo que esta pasando por dentro: ${hoy.loQuePasa.join(' ')}` : '',
+    organos?.length
+      ? `- MIS ORGANOS que ya lo estan sintiendo (puedes nombrarlos, es exacto):\n  ${organos.join('\n  ')}`
+      : '',
     persona.requiereMedico
       ? '- CUIDADO MEDICO: marco una condicion de salud (rinon, corazon, higado, diureticos o restriccion medica) en la que subir los liquidos puede ser peligroso.'
       : '',
@@ -87,9 +111,14 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { pregunta, contexto, historial } = req.body ?? {}
-    if (typeof pregunta !== 'string' || !pregunta.trim() || !contexto) {
-      res.status(400).json({ error: 'Falta la pregunta o el contexto' })
+    const { pregunta, contexto, historial, tipo, momento } = req.body ?? {}
+    if (!contexto) {
+      res.status(400).json({ error: 'Falta el contexto' })
+      return
+    }
+    const esBurbuja = tipo === 'burbuja'
+    if (!esBurbuja && (typeof pregunta !== 'string' || !pregunta.trim())) {
+      res.status(400).json({ error: 'Falta la pregunta' })
       return
     }
 
@@ -97,14 +126,22 @@ export default async function handler(req, res) {
     // cachea), luego el historial, y de ultimo el estado de hoy y la
     // pregunta. Asi el comienzo de la conversacion es identico llamada tras
     // llamada y DeepSeek lo cobra a precio de cache.
-    const mensajes = [
-      { role: 'system', content: INSTRUCCIONES_FIJAS },
-      ...(Array.isArray(historial) ? historial : []).slice(-8).map((m) => ({
-        role: m.de === 'persona' ? 'user' : 'assistant',
-        content: String(m.texto ?? '').slice(0, 1500),
-      })),
-      { role: 'user', content: `${estadoDeAhora(contexto)}\n\n${pregunta.slice(0, 1500)}` },
-    ]
+    const mensajes = esBurbuja
+      ? [
+          { role: 'system', content: INSTRUCCIONES_BURBUJA },
+          {
+            role: 'user',
+            content: `${estadoDeAhora(contexto)}\n\nMomento: ${String(momento ?? 'abrio la app').slice(0, 120)}.\nSuelta tu pensamiento.`,
+          },
+        ]
+      : [
+          { role: 'system', content: INSTRUCCIONES_FIJAS },
+          ...(Array.isArray(historial) ? historial : []).slice(-8).map((m) => ({
+            role: m.de === 'persona' ? 'user' : 'assistant',
+            content: String(m.texto ?? '').slice(0, 1500),
+          })),
+          { role: 'user', content: `${estadoDeAhora(contexto)}\n\n${pregunta.slice(0, 1500)}` },
+        ]
 
     const respuesta = await fetch(URL_DEEPSEEK, {
       method: 'POST',
@@ -116,8 +153,9 @@ export default async function handler(req, res) {
         model: process.env.DEEPSEEK_MODEL || MODELO_POR_DEFECTO,
         messages: mensajes,
         thinking: SIN_PENSAR,
-        temperature: 0.8,
-        max_tokens: 320,
+        // Las burbujas van con mas chispa y mucho mas cortas.
+        temperature: esBurbuja ? 1 : 0.8,
+        max_tokens: esBurbuja ? 90 : 320,
         stream: false,
       }),
     })

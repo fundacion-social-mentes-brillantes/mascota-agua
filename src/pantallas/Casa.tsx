@@ -1,7 +1,8 @@
-import { useMemo } from 'react'
-import { AlertTriangle, Clock, Droplets, Heart, Volume2 } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { AlertTriangle, Clock, Droplets, Heart } from 'lucide-react'
 import { saludoAlEntrar } from '../lib/personalidad'
-import { VOZ_POR_DEFECTO, hablar, paraLeerEnVoz } from '../lib/voz'
+import { pedirBurbuja } from '../lib/mascotaIA'
+import type { Momento } from '../lib/expresiones'
 import Mascota from '../componentes/MascotaViva'
 import Anillo from '../componentes/Anillo'
 import { saludoDeLaMascota } from '../lib/frases'
@@ -48,15 +49,42 @@ export default function Casa({
   const hambre = tieneHambre(mascota.ultimaComida)
   const faltan = Math.max(0, estado.metaMl - estado.totalHoyMl)
 
-  // El saludo se calcula una vez por estado, no en cada pintado, para que no
-  // cambie de frase mientras la persona lo esta leyendo.
-  const saludo = useMemo(
-    () => saludoAlEntrar(perfil, estado, ayer, racha),
-    [perfil, estado, ayer, racha],
-  )
+  // Que cara pone ahora. Lo que acaba de pasar manda sobre el animo de fondo.
+  const momento: Momento = useMemo(() => {
+    if (estado.alertaExceso) return 'exceso'
+    // Si tomó agua hace menos de un minuto, se emociona.
+    if (Number.isFinite(estado.horasSinBeber) && estado.horasSinBeber * 60 < 1)
+      return 'acaba-de-beber'
+    if (estado.totalHoyMl >= estado.metaMl && estado.metaMl > 0) return 'meta-cumplida'
+    const hora = new Date().getHours()
+    if (hora >= 23 || hora < 5) return 'de-noche'
+    if (hambre) return 'tiene-hambre'
+    return 'nada'
+  }, [estado, hambre])
 
-  const alEscucharSaludo = () =>
-    hablar(paraLeerEnVoz(saludo), perfil.voz ?? VOZ_POR_DEFECTO, estado.nivel)
+  // Lo que la mascota suelta sola. Arranca con la frase local (instantanea,
+  // sin internet) y en cuanto DeepSeek contesta, la reemplaza por una suya.
+  const [burbuja, setBurbuja] = useState(() => saludoAlEntrar(perfil, estado, ayer, racha))
+
+  // Solo se le pide una frase nueva cuando cambia algo de verdad: la franja
+  // del dia o el estado del cuerpo. Asi no se gasta una llamada por cada
+  // pintado de pantalla.
+  const disparador = `${mascota.nombre}|${estado.nivel}|${Math.floor(estado.totalHoyMl / 250)}`
+
+  useEffect(() => {
+    let vivo = true
+    const momentoTexto =
+      estado.totalHoyMl === 0
+        ? 'todavia no ha tomado nada hoy'
+        : `acaba de abrir la app y lleva ${estado.totalHoyMl} ml`
+    pedirBurbuja(perfil, mascota, estado, momentoTexto).then((texto) => {
+      if (vivo && texto) setBurbuja(texto)
+    })
+    return () => {
+      vivo = false
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [disparador])
 
   return (
     <div className="mx-auto max-w-lg px-5 pt-5">
@@ -79,18 +107,9 @@ export default function Casa({
         </div>
       )}
 
-      {/* Lo que la mascota dice por su cuenta al abrir la app. */}
-      <div className="relative mb-1 rounded-3xl rounded-bl-md border border-[var(--color-borde)] bg-[var(--color-tarjeta)] px-4 py-3">
-        <p className="text-sm leading-relaxed">{saludo}</p>
-        <button
-          type="button"
-          onClick={alEscucharSaludo}
-          className="mt-1.5 flex items-center gap-1.5 text-xs text-[var(--color-texto-suave)]"
-          aria-label="Escuchar"
-        >
-          <Volume2 size={13} />
-          Escuchar
-        </button>
+      {/* Lo que la mascota dice por su cuenta. */}
+      <div className="anim-entrar relative mb-1 rounded-3xl rounded-bl-md border border-[var(--color-borde)] bg-[var(--color-tarjeta)] px-4 py-3">
+        <p className="text-sm leading-relaxed">{burbuja}</p>
       </div>
 
       <div className="relative flex justify-center py-2">
@@ -99,6 +118,7 @@ export default function Casa({
           color={mascota.color}
           nivel={estado.nivel}
           hidratacion={estado.hidratacion}
+          momento={momento}
           sombrero={mascota.sombrero}
           accesorio={mascota.accesorio}
           tamano={300}
