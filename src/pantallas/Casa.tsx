@@ -1,8 +1,14 @@
 import { useEffect, useMemo, useState } from 'react'
-import { AlertTriangle, Clock, Droplets, Heart } from 'lucide-react'
+import { AlertTriangle, Clock, Droplets, Heart, Send } from 'lucide-react'
 import { saludoAlEntrar } from '../lib/personalidad'
-import { pedirBurbuja } from '../lib/mascotaIA'
+import { hablarConLaMascota, pedirBurbuja } from '../lib/mascotaIA'
 import type { Momento } from '../lib/expresiones'
+
+const SUGERENCIAS = [
+  '¿Cómo vas con el agua de hoy?',
+  '¿Necesito tomar más ahora?',
+  '¿Qué órgano es el que peor la está pasando?',
+]
 import Mascota from '../componentes/MascotaViva'
 import Anillo from '../componentes/Anillo'
 import { saludoDeLaMascota } from '../lib/frases'
@@ -65,6 +71,23 @@ export default function Casa({
   // Lo que la mascota suelta sola. Arranca con la frase local (instantanea,
   // sin internet) y en cuanto DeepSeek contesta, la reemplaza por una suya.
   const [burbuja, setBurbuja] = useState(() => saludoAlEntrar(perfil, estado, ayer, racha))
+  const [texto, setTexto] = useState('')
+  const [miPregunta, setMiPregunta] = useState<string | null>(null)
+  const [esperando, setEsperando] = useState(false)
+
+  async function preguntar(pregunta: string) {
+    const limpia = pregunta.trim()
+    if (!limpia || esperando) return
+    setTexto('')
+    setMiPregunta(limpia)
+    setEsperando(true)
+    try {
+      const respuesta = await hablarConLaMascota(limpia, perfil, mascota, estado, [])
+      setBurbuja(respuesta.texto)
+    } finally {
+      setEsperando(false)
+    }
+  }
 
   // Solo se le pide una frase nueva cuando cambia algo de verdad: la franja
   // del dia o el estado del cuerpo. Asi no se gasta una llamada por cada
@@ -107,10 +130,70 @@ export default function Casa({
         </div>
       )}
 
-      {/* Lo que la mascota dice por su cuenta. */}
-      <div className="anim-entrar relative mb-1 rounded-3xl rounded-bl-md border border-[var(--color-borde)] bg-[var(--color-tarjeta)] px-4 py-3">
-        <p className="text-sm leading-relaxed">{burbuja}</p>
+      {/* La burbuja: aqui habla la mascota, y aqui mismo se le escribe.
+          No hay pantalla de chat aparte a proposito: uno le habla A ELLA,
+          mirandola, no a una lista de mensajes. */}
+      {miPregunta && (
+        <div className="anim-entrar mb-1.5 flex justify-end">
+          <p className="max-w-[80%] rounded-2xl rounded-br-sm bg-[var(--color-agua)] px-3.5 py-2 text-sm text-[#04121f]">
+            {miPregunta}
+          </p>
+        </div>
+      )}
+
+      <div
+        key={burbuja}
+        className="anim-entrar relative mb-2 rounded-3xl rounded-bl-md border border-[var(--color-borde)] bg-[var(--color-tarjeta)] px-4 py-3"
+      >
+        <p className="text-sm leading-relaxed">
+          {esperando ? (
+            <span className="anim-brillo text-[var(--color-texto-suave)]">
+              {mascota.nombre} está pensando...
+            </span>
+          ) : (
+            burbuja
+          )}
+        </p>
       </div>
+
+      <form
+        onSubmit={(e) => {
+          e.preventDefault()
+          preguntar(texto)
+        }}
+        className="mb-1 flex gap-2"
+      >
+        <input
+          type="text"
+          value={texto}
+          onChange={(e) => setTexto(e.target.value)}
+          placeholder={`Pregúntale a ${mascota.nombre}`}
+          className="flex-1 rounded-2xl border border-[var(--color-borde)] bg-[var(--color-tarjeta)] px-4 py-2.5 text-sm outline-none focus:border-[var(--color-agua)]"
+        />
+        <button
+          type="submit"
+          disabled={esperando || texto.trim().length === 0}
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--color-agua)] text-[#04121f] disabled:opacity-40"
+          aria-label="Preguntar"
+        >
+          <Send size={17} />
+        </button>
+      </form>
+
+      {!miPregunta && !esperando && (
+        <div className="mb-2 flex flex-wrap gap-1.5">
+          {SUGERENCIAS.map((s) => (
+            <button
+              key={s}
+              type="button"
+              onClick={() => preguntar(s)}
+              className="rounded-full border border-[var(--color-borde)] bg-[var(--color-tarjeta)] px-3 py-1.5 text-[11px] text-[var(--color-texto-suave)]"
+            >
+              {s}
+            </button>
+          ))}
+        </div>
+      )}
 
       <div className="relative flex justify-center py-2">
         <Mascota

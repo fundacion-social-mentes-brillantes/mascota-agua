@@ -7,6 +7,7 @@
 import { obtenerToken } from './firebase'
 import { describirCuerpo } from './frases'
 import { etiquetaDe, organosAhora } from './organos'
+import { consejoAhora } from './hidratacion'
 import type { EstadoCuerpo, Mascota, MensajeChat, Perfil } from './tipos'
 
 export interface RespuestaMascota {
@@ -58,6 +59,18 @@ function contextoDe(perfil: Perfil, mascota: Mascota, estado: EstadoCuerpo) {
       .filter((o) => o.estado !== 'bien')
       .slice(0, 4)
       .map((o) => `${o.nombre} (${etiquetaDe(o.estado).toLowerCase()}): ${o.queLePasa}`),
+    // El calculo ya hecho de cuanta agua conviene AHORA. Es lo que evita que
+    // el modelo se invente cantidades: aqui ya vienen con los topes de
+    // seguridad aplicados.
+    consejo: consejoAhora(perfil, estado),
+    cuidados: {
+      requiereMedico: perfil.requiereMedico,
+      condiciones: perfil.condiciones,
+      edad: perfil.edad,
+      etapa: perfil.etapa,
+      clima: perfil.clima,
+      actividad: perfil.actividad,
+    },
   }
 }
 

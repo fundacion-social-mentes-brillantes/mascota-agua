@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { onAuthStateChanged, getRedirectResult } from 'firebase/auth'
-import { Home, LineChart, MessageCircle, Settings, ShoppingBag } from 'lucide-react'
+import { HeartPulse, Home, LineChart, Settings, ShoppingBag } from 'lucide-react'
 import { firebaseConfigurado, obtenerAuth, type User } from './lib/firebase'
 import {
   diaDe,
@@ -17,7 +17,7 @@ import Entrar from './pantallas/Entrar'
 import Bienvenida from './pantallas/Bienvenida'
 import Casa from './pantallas/Casa'
 import Linea from './pantallas/Linea'
-import Charla from './pantallas/Charla'
+import Cuerpo from './pantallas/Cuerpo'
 import Tienda from './pantallas/Tienda'
 import Ajustes from './pantallas/Ajustes'
 import RegistrarAgua from './componentes/RegistrarAgua'
@@ -25,12 +25,12 @@ import Cargando from './componentes/Cargando'
 import { useRecordatorios } from './lib/recordatorios'
 import { sincronizarAvisos } from './lib/push'
 
-type Seccion = 'casa' | 'linea' | 'charla' | 'tienda' | 'ajustes'
+type Seccion = 'casa' | 'linea' | 'cuerpo' | 'tienda' | 'ajustes'
 
 const PESTANAS: { id: Seccion; texto: string; Icono: typeof Home }[] = [
   { id: 'casa', texto: 'Mascota', Icono: Home },
   { id: 'linea', texto: 'Mi agua', Icono: LineChart },
-  { id: 'charla', texto: 'Hablar', Icono: MessageCircle },
+  { id: 'cuerpo', texto: 'Mi cuerpo', Icono: HeartPulse },
   { id: 'tienda', texto: 'Tienda', Icono: ShoppingBag },
   { id: 'ajustes', texto: 'Ajustes', Icono: Settings },
 ]
@@ -227,9 +227,7 @@ export default function App() {
         {seccion === 'linea' && (
           <Linea uid={usuario.uid} perfil={perfil} registros={registros} estado={estado} />
         )}
-        {seccion === 'charla' && (
-          <Charla uid={usuario.uid} perfil={perfil} mascota={mascota} estado={estado} />
-        )}
+        {seccion === 'cuerpo' && <Cuerpo perfil={perfil} estado={estado} />}
         {seccion === 'tienda' && (
           <Tienda mascota={mascota} alGuardar={alGuardarMascota} />
         )}

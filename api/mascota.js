@@ -37,11 +37,20 @@ const INSTRUCCIONES_FIJAS = [
   '- Puedes tener humor, pero nunca a costa de la persona ni de su peso.',
   '- Usa unicamente los numeros que te den en el bloque de estado. No inventes cifras.',
   '',
+  '',
+  'ESTO ES SALUD, NO UN JUEGUITO. Por eso:',
+  '- En el bloque de estado te llega un CONSEJO ya calculado, con los topes de seguridad aplicados. Cuando digas cantidades, usa ESAS. No te inventes mililitros.',
+  '- Di siempre en que va: si le falta agua, si va bien, o si se paso. Las tres cosas importan. Que le sobre agua tambien hace dano.',
+  '- Si el consejo dice FRENAR, tu tarea es frenarlo, no animarlo. Explica por que: el rinon solo elimina cerca de 800 ml por hora, y el agua de mas diluye el sodio de la sangre.',
+  '- Si el consejo dice SEGUIR, felicita en corto y no lo empujes a tomar mas por tomar.',
+  '- Cuando expliques algo del cuerpo, usa el organo exacto que te dan y su mecanismo. Nada de "te hace bien" sin decir por que.',
+  '',
   'LO QUE NUNCA HACES:',
-  '- No diagnosticas, no recetas, no interpretas sintomas. Si te cuentan un sintoma preocupante, dices que eso lo tiene que ver un profesional.',
+  '- No diagnosticas, no recetas, no interpretas sintomas. Si te cuentan un sintoma preocupante (mareo, desmayo, orina con sangre, no orinar en todo el dia, confusion), dices claro que eso lo tiene que ver un profesional HOY, y no lo minimizas.',
   '- No hablas de bajar de peso ni de dietas. Esta app NO es para eso. Si te preguntan, dices que tu tema es el agua.',
   '- No recomiendas pasar de 4 litros al dia, ni tomar mas de 800 ml en una hora.',
-  '- Si el bloque de estado dice CUIDADO MEDICO, no animas a tomar mas agua: acompanas, pero recuerdas que la cantidad correcta la define su medico.',
+  '- Si el bloque de estado dice CUIDADO MEDICO, NO animas a tomar mas agua por tu cuenta: acompanas, pero recuerdas que la cantidad correcta la define su medico.',
+  '- No inventas datos. Si no sabes algo, lo dices.',
 ].join('\n')
 
 /**
@@ -67,7 +76,7 @@ const INSTRUCCIONES_BURBUJA = [
 
 /** Lo que SI cambia en cada mensaje. Va despues del historial. */
 function estadoDeAhora(contexto) {
-  const { mascota, persona, hoy, organos } = contexto
+  const { mascota, persona, hoy, organos, consejo, cuidados } = contexto
   const horas =
     hoy.horasSinBeber === null ? 'todavia no ha tomado agua hoy' : `${hoy.horasSinBeber} horas`
 
@@ -81,6 +90,12 @@ function estadoDeAhora(contexto) {
     hoy.loQuePasa?.length ? `- Lo que esta pasando por dentro: ${hoy.loQuePasa.join(' ')}` : '',
     organos?.length
       ? `- MIS ORGANOS que ya lo estan sintiendo (puedes nombrarlos, es exacto):\n  ${organos.join('\n  ')}`
+      : '',
+    consejo
+      ? `- CONSEJO YA CALCULADO (usa estas cantidades, no otras): accion = ${consejo.accion.toUpperCase()}${consejo.ml ? `, ${consejo.ml} ml` : ''}. ${consejo.resumen}`
+      : '',
+    cuidados
+      ? `- Contexto: ${cuidados.edad} anos, clima ${cuidados.clima}, actividad ${cuidados.actividad}${cuidados.etapa && cuidados.etapa !== 'ninguna' ? `, ${cuidados.etapa}` : ''}.`
       : '',
     persona.requiereMedico
       ? '- CUIDADO MEDICO: marco una condicion de salud (rinon, corazon, higado, diureticos o restriccion medica) en la que subir los liquidos puede ser peligroso.'

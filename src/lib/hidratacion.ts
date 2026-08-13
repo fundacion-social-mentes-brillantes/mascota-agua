@@ -240,6 +240,76 @@ export function calcularEstadoCuerpo(
   }
 }
 
+export interface ConsejoAhora {
+  accion: 'tomar' | 'seguir' | 'esperar' | 'frenar'
+  /** Cuantos ml conviene tomar YA. 0 si no toca tomar nada. */
+  ml: number
+  /** Una frase corta, ya masticada, lista para mostrar o para el modelo. */
+  resumen: string
+}
+
+/**
+ * Cuanta agua conviene AHORA. Esto es lo que hace que la mascota pueda decir
+ * "tomate 250 ml" en vez de "toma agua", y sobre todo que sepa cuando decir
+ * que NO: pasarse tambien hace dano.
+ */
+export function consejoAhora(perfil: Perfil, estado: EstadoCuerpo, ahora = Date.now()): ConsejoAhora {
+  // Primero lo que frena, que pesa mas que lo que empuja.
+  if (estado.mlUltimaHora >= TOPES.maximoPorHoraMl) {
+    return {
+      accion: 'frenar',
+      ml: 0,
+      resumen: `Ya van ${estado.mlUltimaHora} ml en una hora y el rinon solo alcanza a eliminar cerca de ${TOPES.maximoPorHoraMl}. Ahora toca esperar, no tomar.`,
+    }
+  }
+  if (estado.totalHoyMl >= TOPES.maximoMl) {
+    return {
+      accion: 'frenar',
+      ml: 0,
+      resumen: `Con ${(estado.totalHoyMl / 1000).toFixed(1)} L ya se paso del tope seguro del dia. Mas agua hoy no suma: diluye el sodio.`,
+    }
+  }
+
+  const faltante = Math.max(0, estado.metaMl - estado.totalHoyMl)
+  if (faltante === 0) {
+    return {
+      accion: 'seguir',
+      ml: 0,
+      resumen: 'Meta cumplida. De aqui en adelante, solo si da sed.',
+    }
+  }
+
+  if (esHoraDeDormir(perfil, ahora)) {
+    return {
+      accion: 'esperar',
+      ml: Math.min(150, faltante),
+      resumen:
+        'Ya es hora de dormir: un sorbo pequeno si hay sed, pero no lo que falta de la meta, o toca levantarse de madrugada.',
+    }
+  }
+
+  const esperado = metaEsperadaAhora(perfil, ahora)
+  const atraso = esperado - estado.totalHoyMl
+  // Cuanto cabe sin pasarse del tope por hora.
+  const cabe = Math.max(0, TOPES.maximoPorHoraMl - estado.mlUltimaHora)
+
+  if (atraso <= 50) {
+    return {
+      accion: 'seguir',
+      ml: 0,
+      resumen: `Vas al ritmo que toca para esta hora. Faltan ${faltante} ml, pero repartidos en lo que queda del dia.`,
+    }
+  }
+
+  // Se recupera el atraso de a poquitos, nunca de un golpe.
+  const sugerido = Math.min(cabe, Math.max(150, Math.min(500, Math.round(atraso / 50) * 50)))
+  return {
+    accion: 'tomar',
+    ml: sugerido,
+    resumen: `Vas ${atraso} ml atras para la hora que es. Lo sano es recuperarlo de a poquitos: unos ${sugerido} ml ahora, no todo de golpe.`,
+  }
+}
+
 /** Cada cuanto conviene recordar, segun como venga el dia. */
 export function minutosHastaElProximoAviso(estado: EstadoCuerpo): number {
   if (estado.nivel === 'critico' || estado.nivel === 'bajo') return 45
