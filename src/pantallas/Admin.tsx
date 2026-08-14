@@ -51,9 +51,14 @@ export default function Admin() {
   const [resumen, setResumen] = useState<Resumen | null>(null)
   const [gente, setGente] = useState<Fila[]>([])
 
-  const traer = useCallback(async () => {
-    setCargando(true)
-    setError(null)
+  // `avisar` va en false en la primera carga: el estado ya arranca "cargando"
+  // y sin nada de error, asi que no hay que tocarlo. Ademas evita cambiar el
+  // estado dentro del efecto, que dispara renders en cascada.
+  const traer = useCallback(async (avisar = true) => {
+    if (avisar) {
+      setCargando(true)
+      setError(null)
+    }
     try {
       const token = await obtenerAuth().currentUser?.getIdToken()
       const respuesta = await fetch('/api/admin', {
@@ -78,7 +83,7 @@ export default function Admin() {
   }, [])
 
   useEffect(() => {
-    void traer()
+    void traer(false)
   }, [traer])
 
   return (
