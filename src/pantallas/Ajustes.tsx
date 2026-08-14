@@ -2,6 +2,12 @@ import { useEffect, useState } from 'react'
 import { Bell, LogOut, ShieldCheck, Trash2 } from 'lucide-react'
 import { salir, type User } from '../lib/firebase'
 import { borrarChat, borrarTodo, guardarPerfil } from '../lib/almacen'
+import {
+  consultaEncendida,
+  cuantosCodigosAprendidos,
+  olvidarCodigos,
+  ponerConsulta,
+} from '../lib/productos'
 import { borrarTodasLasFotos, contarFotos } from '../lib/fotos'
 import { calcularMeta } from '../lib/hidratacion'
 import { evaluarImc, fraseMundial } from '../lib/imc'
@@ -57,6 +63,10 @@ export default function Ajustes({
   const [dormir, setDormir] = useState(perfil.horaDormir)
   const [avisos, setAvisos] = useState(perfil.recordatoriosActivos)
   const [alcohol, setAlcohol] = useState(Boolean(perfil.registrarAlcohol))
+  // El interruptor del lector vive en el TELEFONO, no en el perfil: es una
+  // decision sobre lo que sale de este aparato, no sobre la persona.
+  const [consultar, setConsultar] = useState(consultaEncendida)
+  const [aprendidos, setAprendidos] = useState(cuantosCodigosAprendidos)
   const [, setPermiso] = useState(estadoDeLosAvisos())
   const [fotos, setFotos] = useState(0)
   const [mensaje, setMensaje] = useState<string | null>(null)
@@ -357,6 +367,44 @@ export default function Ajustes({
           Entre 500 y 5.000 ml. Por encima de 4.000 al día, sin ejercicio fuerte ni calor
           extremo, ya no es mejor: es riesgo de diluir el sodio de la sangre.
         </p>
+      </Bloque>
+
+      {/* Lo que sale del telefono cuando se escanea un empaque. Se dice con
+          todas las letras que viajan 13 digitos y nada mas. */}
+      <Bloque titulo="El lector de empaques">
+        <label className="flex items-start gap-3 rounded-2xl bg-[var(--color-fondo-2)] p-3.5">
+          <input
+            type="checkbox"
+            checked={consultar}
+            onChange={(e) => {
+              setConsultar(e.target.checked)
+              ponerConsulta(e.target.checked)
+            }}
+            className="mt-0.5 h-5 w-5 accent-[var(--color-agua)]"
+          />
+          <span className="text-sm">
+            Buscar el producto en internet al escanear
+            <span className="mt-1 block text-xs leading-relaxed text-[var(--color-texto-suave)]">
+              Salen solo los 13 dígitos del código, a un catálogo abierto y gratuito de
+              productos. Nunca tu nombre, ni dónde estás, ni ninguna foto. Si lo apagas, el
+              lector solo reconoce los empaques que tú mismo ya le enseñaste.
+            </span>
+          </span>
+        </label>
+        {aprendidos > 0 && (
+          <button
+            type="button"
+            onClick={() => {
+              olvidarCodigos()
+              setAprendidos(0)
+              setMensaje('Listo, olvidé los empaques.')
+            }}
+            className="mt-3 w-full rounded-2xl border border-[var(--color-borde)] py-3 text-sm text-[var(--color-texto-suave)]"
+          >
+            Este teléfono se aprendió {aprendidos}{' '}
+            {aprendidos === 1 ? 'empaque' : 'empaques'} · Olvidarlos
+          </button>
+        )}
       </Bloque>
 
       {/* El alcohol viene APAGADO de fabrica: quien lo necesita lo prende, y a

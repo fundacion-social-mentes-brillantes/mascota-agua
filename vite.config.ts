@@ -35,7 +35,22 @@ export default defineConfig({
         // Se mete dentro del service worker: es lo que muestra los avisos de
         // la mascota aunque la app este cerrada.
         importScripts: ['/push-sw.js'],
+        // El lector de codigos (1,1 MB de wasm) NO va aqui a proposito: quien
+        // nunca escanee no tiene por que descargarlo al instalar la app.
         globPatterns: ['**/*.{js,css,html,svg,png,jpg,jpeg,webp,woff,woff2}'],
+        runtimeCaching: [
+          {
+            // Pero la primera vez que alguien escanea, se guarda para siempre.
+            // Sin esto se bajaria 1,1 MB en cada escaneo, que con datos
+            // moviles en Colombia no es un detalle.
+            urlPattern: /\.wasm$/,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'lector-de-codigos',
+              expiration: { maxEntries: 2, maxAgeSeconds: 60 * 60 * 24 * 180 },
+            },
+          },
+        ],
         cleanupOutdatedCaches: true,
         clientsClaim: true,
         navigateFallback: 'index.html',

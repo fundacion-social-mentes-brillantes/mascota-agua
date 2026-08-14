@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { AlertTriangle, Camera, Check, Loader2, Minus, Plus, X } from 'lucide-react'
+import { AlertTriangle, Camera, Check, Loader2, Minus, Plus, ScanLine, X } from 'lucide-react'
 import { agregarRegistro, sumarGotas } from '../lib/almacen'
 import { comprimirImagen, guardarFoto } from '../lib/fotos'
 import { RECIPIENTES, recipientePorId } from '../lib/recipientes'
 import { revisarToma, TOPES } from '../lib/hidratacion'
 import { BEBIDAS, bebidaPorId, EXPLICACION_CLASE, FICHA_HONESTA, VERSION_CATALOGO } from '../lib/bebidas'
 import { revisarFoto } from '../lib/vision'
+import Escaner from './Escaner'
+import { buscarProducto, recordarCodigo, type ProductoLeido } from '../lib/productos'
 import type {
   EstadoVerificacion,
   Mascota,
@@ -38,6 +40,9 @@ export default function RegistrarAgua({
   const [foto, setFoto] = useState<string | null>(null)
   const [revisando, setRevisando] = useState(false)
   const [revision, setRevision] = useState<{ estado: EstadoVerificacion; nota: string } | null>(null)
+  const [escaneando, setEscaneando] = useState(false)
+  const [buscandoProducto, setBuscandoProducto] = useState(false)
+  const [leido, setLeido] = useState<ProductoLeido | null>(null)
   const [guardando, setGuardando] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const entradaFoto = useRef<HTMLInputElement>(null)
@@ -67,6 +72,23 @@ export default function RegistrarAgua({
   const noCabe = revisionToma.veredicto === 'rechazado'
   const seRecorta = revisionToma.veredicto === 'recortado'
   const mlQueSeGuardan = revisionToma.mlAceptado
+
+  async function alLeerCodigo(codigo: string) {
+    setEscaneando(false)
+    setBuscandoProducto(true)
+    setError(null)
+    try {
+      const producto = await buscarProducto(codigo)
+      setLeido(producto)
+      // El lector PROPONE; la persona confirma. Si no se supo la bebida, no
+      // se toca lo que ya estaba elegido.
+      if (producto.bebida) setBebidaId(producto.bebida)
+      // Y el tamano del ENVASE nunca se toma como lo que se tomo: para eso
+      // estan los botones de abajo.
+    } finally {
+      setBuscandoProducto(false)
+    }
+  }
 
   function elegirRecipiente(id: Recipiente) {
     setRecipiente(id)
@@ -145,11 +167,26 @@ export default function RegistrarAgua({
         (foto ? GOTAS_POR_FOTO : 0) +
         (verificacion === 'confirmado' ? GOTAS_POR_CONFIRMADA : 0)
       await sumarGotas(uid, gotas, Math.round(revisionFinal.mlEfectivo / 50))
+      // Si venia de un escaneo, este telefono se lo aprende: la proxima vez
+      // el mismo empaque se reconoce al instante y sin internet.
+      if (leido?.codigo) {
+        recordarCodigo(leido.codigo, bebidaId, leido.envaseMl, leido.nombre ?? undefined)
+      }
       alCerrar()
     } catch {
       setError('No se pudo guardar. Revisa tu conexión e intenta otra vez.')
       setGuardando(false)
     }
+  }
+
+  if (escaneando) {
+    return (
+      <Escaner
+        alLeer={(codigo) => void alLeerCodigo(codigo)}
+        alCerrar={() => setEscaneando(false)}
+        alEscribirAMano={() => setEscaneando(false)}
+      />
+    )
   }
 
   return (
@@ -166,6 +203,69 @@ export default function RegistrarAgua({
             <X size={20} />
           </button>
         </div>
+
+        {/* Escanear es un ATAJO, no el camino principal: si falla, todo lo de
+            abajo sigue funcionando igual que siempre. */}
+        <button
+          type="button"
+          onClick={() => setEscaneando(true)}
+          disabled={buscandoProducto}
+          className="mb-4 flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-[var(--color-agua)]/50 bg-[var(--color-agua)]/8 py-3 text-sm text-[var(--color-agua-clara)] disabled:opacity-60"
+        >
+          {buscandoProducto ? <Loader2 size={16} className="animate-spin" /> : <ScanLine size={16} />}
+          {buscandoProducto ? 'Buscando el empaque…' : 'Escanear el empaque'}
+        </button>
+
+        {leido && (
+          <div className="mb-4 rounded-2xl border border-[var(--color-borde)] bg-[var(--color-tarjeta)] p-4 text-xs">
+            {leido.origen === 'desconocido' ? (
+              <>
+                <p className="font-semibold">No conozco este empaque todavía.</p>
+                <p className="mt-1 leading-relaxed text-[var(--color-texto-suave)]">
+                  Elige la bebida y la cantidad aquí abajo, como siempre. Me lo aprendo y la
+                  próxima vez lo reconozco de una.
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="font-semibold">
+                  {leido.nombre ?? 'Empaque reconocido'}
+                  {leido.marca ? ` · ${leido.marca}` : ''}
+                </p>
+                <p className="mt-1 leading-relaxed text-[var(--color-texto-suave)]">
+                  {leido.origen === 'aprendido'
+                    ? 'Ya me lo habías enseñado en este teléfono.'
+                    : 'Lo encontré en el catálogo abierto de productos.'}
+                  {!leido.bebida && ' No supe qué bebida es: elígela tú abajo.'}
+                  {!leido.envaseMl && ' Tampoco supe de cuántos ml es el envase.'}
+                </p>
+                {leido.envaseMl && (
+                  <>
+                    <p className="mt-3 font-semibold">
+                      El envase es de {leido.envaseMl} ml. ¿Cuánto te tomaste?
+                    </p>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {[
+                        { texto: 'Todo', ml: leido.envaseMl },
+                        { texto: 'La mitad', ml: Math.round(leido.envaseMl / 2) },
+                        { texto: 'Un vaso', ml: 250 },
+                      ].map((o) => (
+                        <button
+                          key={o.texto}
+                          type="button"
+                          onClick={() => setMl(Math.min(TOPES.maximoPorTomaMl, o.ml))}
+                          className="rounded-full border border-[var(--color-borde)] px-3 py-1.5"
+                        >
+                          {o.texto} · {Math.min(TOPES.maximoPorTomaMl, o.ml)} ml
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </>
+            )}
+          </div>
+        )}
 
         <p className="mb-2 text-xs text-[var(--color-texto-suave)]">La bebida</p>
         <div className="sin-barra -mx-5 mb-1 flex gap-2 overflow-x-auto px-5 pb-1">
