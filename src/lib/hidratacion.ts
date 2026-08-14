@@ -365,14 +365,14 @@ export function consejoAhora(perfil: Perfil, estado: EstadoCuerpo, ahora = Date.
     return {
       accion: 'frenar',
       ml: 0,
-      resumen: `Ya van ${estado.mlUltimaHora} ml en una hora y el rinon solo alcanza a eliminar cerca de ${TOPES.maximoPorHoraMl}. Ahora toca esperar, no tomar.`,
+      resumen: `Ya van ${estado.mlUltimaHora} ml en una hora y el riñón solo alcanza a eliminar cerca de ${TOPES.maximoPorHoraMl}. Ahora toca esperar, no tomar.`,
     }
   }
   if (estado.totalHoyMl >= TOPES.maximoMl) {
     return {
       accion: 'frenar',
       ml: 0,
-      resumen: `Con ${(estado.totalHoyMl / 1000).toFixed(1)} L ya se paso del tope seguro del dia. Mas agua hoy no suma: diluye el sodio.`,
+      resumen: `Con ${(estado.totalHoyMl / 1000).toFixed(1)} L ya te pasaste del tope seguro del día. Más agua hoy no suma: diluye el sodio.`,
     }
   }
 
@@ -381,7 +381,7 @@ export function consejoAhora(perfil: Perfil, estado: EstadoCuerpo, ahora = Date.
     return {
       accion: 'seguir',
       ml: 0,
-      resumen: 'Meta cumplida. De aqui en adelante, solo si da sed.',
+      resumen: 'Meta cumplida. De aquí en adelante, solo si da sed.',
     }
   }
 
@@ -399,7 +399,7 @@ export function consejoAhora(perfil: Perfil, estado: EstadoCuerpo, ahora = Date.
       return {
         accion: 'esperar',
         ml: 0,
-        resumen: 'Ya no cabe mas agua antes de dormir sin que toque levantarse de madrugada.',
+        resumen: 'Ya no cabe más agua antes de dormir sin que toque levantarse de madrugada.',
       }
     }
     if (enElHueso) {
@@ -407,9 +407,9 @@ export function consejoAhora(perfil: Perfil, estado: EstadoCuerpo, ahora = Date.
         accion: 'tomar',
         ml,
         resumen:
-          `Hoy quedaste en ${estado.totalHoyMl} ml y el minimo que el cuerpo gasta solo respirando es ${minimo}. ` +
+          `Hoy quedaste en ${estado.totalHoyMl} ml y el mínimo que el cuerpo gasta solo respirando es ${minimo}. ` +
           `Ya no se recupera de un tirón: toma ${ml} ml despacio y mañana arrancamos temprano. ` +
-          `Tomarse lo que falta ahora no repone el dia y si obliga a levantarse a orinar.`,
+          `Tomarse lo que falta ahora no repone el día y sí obliga a levantarse a orinar.`,
       }
     }
     return {
@@ -430,7 +430,7 @@ export function consejoAhora(perfil: Perfil, estado: EstadoCuerpo, ahora = Date.
     return {
       accion: 'seguir',
       ml: 0,
-      resumen: `Vas al ritmo que toca para esta hora. Faltan ${faltante} ml, pero repartidos en lo que queda del dia.`,
+      resumen: `Vas al ritmo que toca para esta hora. Faltan ${faltante} ml, pero repartidos en lo que queda del día.`,
     }
   }
 
@@ -439,7 +439,7 @@ export function consejoAhora(perfil: Perfil, estado: EstadoCuerpo, ahora = Date.
   return {
     accion: 'tomar',
     ml: sugerido,
-    resumen: `Vas ${atraso} ml atras para la hora que es. Lo sano es recuperarlo de a poquitos: unos ${sugerido} ml ahora, no todo de golpe.`,
+    resumen: `Vas ${atraso} ml atrás para la hora que es. Lo sano es recuperarlo de a poquitos: unos ${sugerido} ml ahora, no todo de golpe.`,
   }
 }
 
@@ -486,7 +486,7 @@ export function revisarToma(
   const seguidas = registros.filter((r) => r.hora >= ahora - VENTANA_SOSPECHA_MS).length
   const sospecha =
     seguidas >= TOMAS_SEGUIDAS_SOSPECHOSAS
-      ? `Van ${seguidas} registros en diez minutos. Si es de verdad, para; y si es por probar, mejor no: el numero de la pantalla es tu cuerpo, no un puntaje.`
+      ? `Van ${seguidas} registros en diez minutos. Si es de verdad, para; y si es por probar, mejor no: el número de la pantalla es tu cuerpo, no un puntaje.`
       : null
 
   // Los tres techos, del mas estrecho al mas ancho.
@@ -498,19 +498,19 @@ export function revisarToma(
   if (cabe <= 0) {
     const motivo =
       cabeEnElDia <= 0
-        ? `Hoy ya vas en ${(totalHoy / 1000).toFixed(1)} L. Mas agua no suma: diluye el sodio de la sangre. Seguimos mañana.`
-        : `Ya llevas ${mlUltimaHora} ml en esta hora y el rinon solo alcanza a eliminar cerca de ${TOPES.maximoPorHoraMl}. Deja pasar un rato.`
+        ? `Hoy ya vas en ${(totalHoy / 1000).toFixed(1)} L. Más agua no suma: diluye el sodio de la sangre. Seguimos mañana.`
+        : `Ya llevas ${mlUltimaHora} ml en esta hora y el riñón solo alcanza a eliminar cerca de ${TOPES.maximoPorHoraMl}. Deja pasar un rato.`
     return { veredicto: 'rechazado', mlAceptado: 0, motivo, sospecha }
   }
 
   if (ml > cabe) {
     let motivo: string
     if (cabe === cabeEnElDia) {
-      motivo = `Te anoto ${cabe} ml, que es lo que falta para el tope de ${(TOPES.maximoMl / 1000).toFixed(0)} L del dia.`
+      motivo = `Te anoto ${cabe} ml, que es lo que falta para el tope de ${(TOPES.maximoMl / 1000).toFixed(0)} L del día.`
     } else if (cabe === cabeEnLaHora) {
-      motivo = `Te anoto ${cabe} ml: con lo de esta hora ya se completan los ${TOPES.maximoPorHoraMl} que el rinon alcanza a eliminar.`
+      motivo = `Te anoto ${cabe} ml: con lo de esta hora ya se completan los ${TOPES.maximoPorHoraMl} que el riñón alcanza a eliminar.`
     } else {
-      motivo = `Te anoto ${cabe} ml. Mas de eso de un solo golpe no alcanza a salir del estomago dentro de la hora, asi que no hidrata mas rapido: se queda pesando.`
+      motivo = `Te anoto ${cabe} ml. Más de eso de un solo golpe no alcanza a salir del estómago dentro de la hora, así que no hidrata más rápido: se queda pesando.`
     }
     return { veredicto: 'recortado', mlAceptado: cabe, motivo, sospecha }
   }
