@@ -19,6 +19,10 @@ import { listarAvisos, listarUso, tokenDelRobot } from './_firestore-servidor.js
 
 const ADMIN_POR_DEFECTO = 'fundacionsocial@gimnasioemocionalmb.com'
 
+/** El robot del servidor tiene cuenta de Firebase, pero no es una persona:
+ *  no cuenta como usuario ni ensucia las cifras del panel. */
+const UID_ROBOT = 'ESSJeXDWsOao5K0YcPHiJ3gHuKJ3'
+
 /** Precios de deepseek-v4-flash, en dolares por millon de tokens. */
 const PRECIO = { entradaCache: 0.028, entradaNueva: 0.14, salida: 0.28 }
 
@@ -103,6 +107,8 @@ export default async function handler(req, res) {
       })
       porUid.set(uid, fila)
     }
+
+    porUid.delete(UID_ROBOT)
 
     const gente = [...porUid.values()].map((f) => ({
       ...f,

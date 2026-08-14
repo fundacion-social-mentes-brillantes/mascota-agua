@@ -62,6 +62,11 @@ async function traerDelServidor(): Promise<Respuesta> {
   }
 }
 
+/** "1 pregunta" y no "1 preguntas". */
+function plural(n: number, singular: string, plural_: string): string {
+  return `${n} ${n === 1 ? singular : plural_}`
+}
+
 function cuandoFue(dias: number | null): string {
   if (dias === null) return 'nunca'
   if (dias === 0) return 'hoy'
@@ -209,7 +214,8 @@ export default function Admin() {
 
                 {f.llamadas > 0 && (
                   <p className="mt-2 border-t border-[var(--color-borde)] pt-2 text-[10px] text-[var(--color-texto-suave)]">
-                    {f.preguntas} preguntas y {f.burbujas} burbujas · US$
+                    {plural(f.preguntas, 'pregunta', 'preguntas')} y{' '}
+                    {plural(f.burbujas, 'burbuja', 'burbujas')} · US$
                     {f.costoUsd.toFixed(4)} en total
                   </p>
                 )}
