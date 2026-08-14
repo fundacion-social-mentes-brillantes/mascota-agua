@@ -4,6 +4,7 @@ import { agregarRegistro, sumarGotas } from '../lib/almacen'
 import { comprimirImagen, guardarFoto } from '../lib/fotos'
 import { RECIPIENTES, recipientePorId } from '../lib/recipientes'
 import { revisarToma, TOPES } from '../lib/hidratacion'
+import { BEBIDAS, bebidaPorId, EXPLICACION_CLASE, FICHA_HONESTA, VERSION_CATALOGO } from '../lib/bebidas'
 import { revisarFoto } from '../lib/vision'
 import type {
   EstadoVerificacion,
@@ -31,6 +32,8 @@ export default function RegistrarAgua({
   alCerrar: () => void
 }) {
   const [recipiente, setRecipiente] = useState<Recipiente>('vaso')
+  const [bebidaId, setBebidaId] = useState('agua')
+  const [verFicha, setVerFicha] = useState(false)
   const [ml, setMl] = useState(250)
   const [foto, setFoto] = useState<string | null>(null)
   const [revisando, setRevisando] = useState(false)
@@ -51,7 +54,16 @@ export default function RegistrarAgua({
   // La app revisa la toma ANTES de guardarla y lo dice de frente, para que
   // nadie se lleve la sorpresa despues. Si le da sin parar al boton, aqui se
   // le nota.
-  const revisionToma = useMemo(() => revisarToma(ml, registros), [ml, registros])
+  const revisionToma = useMemo(() => revisarToma(ml, registros, bebidaId), [ml, registros, bebidaId])
+  const bebida = bebidaPorId(bebidaId)
+  // El alcohol viene apagado de fabrica y no existe para menores de edad.
+  const bebidasVisibles = useMemo(
+    () =>
+      BEBIDAS.filter(
+        (b) => b.clase !== 'alcohol' || (perfil.registrarAlcohol && perfil.edad >= 18),
+      ),
+    [perfil.registrarAlcohol, perfil.edad],
+  )
   const noCabe = revisionToma.veredicto === 'rechazado'
   const seRecorta = revisionToma.veredicto === 'recortado'
   const mlQueSeGuardan = revisionToma.mlAceptado
@@ -103,7 +115,7 @@ export default function RegistrarAgua({
     // Se vuelve a revisar en el momento de guardar: entre que abrio la
     // ventana y que le dio al boton pudo pasar una hora, o pudo registrar
     // agua desde otro telefono.
-    const revisionFinal = revisarToma(ml, registros)
+    const revisionFinal = revisarToma(ml, registros, bebidaId)
     if (revisionFinal.veredicto === 'rechazado') {
       setError(revisionFinal.motivo)
       return
@@ -115,7 +127,10 @@ export default function RegistrarAgua({
       const id = await agregarRegistro(
         uid,
         {
-          ml: revisionFinal.mlAceptado,
+          ml: revisionFinal.mlEfectivo,
+          mlBruto: revisionFinal.mlAceptado,
+          bebida: bebidaId,
+          versionCatalogo: VERSION_CATALOGO,
           recipiente,
           verificacion,
           tieneFotoLocal: Boolean(foto),
@@ -129,7 +144,7 @@ export default function RegistrarAgua({
         GOTAS_POR_TRAGO +
         (foto ? GOTAS_POR_FOTO : 0) +
         (verificacion === 'confirmado' ? GOTAS_POR_CONFIRMADA : 0)
-      await sumarGotas(uid, gotas, Math.round(revisionFinal.mlAceptado / 50))
+      await sumarGotas(uid, gotas, Math.round(revisionFinal.mlEfectivo / 50))
       alCerrar()
     } catch {
       setError('No se pudo guardar. Revisa tu conexión e intenta otra vez.')
@@ -141,7 +156,7 @@ export default function RegistrarAgua({
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-sm">
       <div className="anim-entrar zona-segura-abajo max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-t-3xl border-t border-[var(--color-borde)] bg-[var(--color-fondo-2)] p-5">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-bold">¿Cuánta agua tomaste?</h2>
+          <h2 className="text-lg font-bold">¿Qué tomaste?</h2>
           <button
             type="button"
             onClick={alCerrar}
@@ -151,6 +166,42 @@ export default function RegistrarAgua({
             <X size={20} />
           </button>
         </div>
+
+        <p className="mb-2 text-xs text-[var(--color-texto-suave)]">La bebida</p>
+        <div className="sin-barra -mx-5 mb-1 flex gap-2 overflow-x-auto px-5 pb-1">
+          {bebidasVisibles.map((b) => (
+            <button
+              key={b.id}
+              type="button"
+              onClick={() => setBebidaId(b.id)}
+              className={`flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-2 text-xs transition ${
+                bebidaId === b.id
+                  ? 'border-[var(--color-agua)] bg-[var(--color-agua)]/15 text-[var(--color-agua-clara)]'
+                  : 'border-[var(--color-borde)] bg-[var(--color-tarjeta)] text-[var(--color-texto-suave)]'
+              }`}
+            >
+              <span>{b.emoji}</span>
+              {b.nombre}
+            </button>
+          ))}
+        </div>
+        <p className="mb-5 text-[11px] leading-relaxed text-[var(--color-texto-suave)]">
+          {EXPLICACION_CLASE[bebida.clase]}{' '}
+          <button
+            type="button"
+            onClick={() => setVerFicha((v) => !v)}
+            className="text-[var(--color-agua-clara)] underline underline-offset-2"
+          >
+            ¿por qué?
+          </button>
+        </p>
+        {verFicha && (
+          <ul className="mb-5 space-y-2 rounded-2xl border border-[var(--color-borde)] bg-[var(--color-tarjeta)] p-4 text-[11px] leading-relaxed text-[var(--color-texto-suave)]">
+            {FICHA_HONESTA.map((linea) => (
+              <li key={linea.slice(0, 20)}>{linea}</li>
+            ))}
+          </ul>
+        )}
 
         <p className="mb-2 text-xs text-[var(--color-texto-suave)]">En qué la tomaste</p>
         <div className="mb-5 grid grid-cols-3 gap-2">
@@ -205,6 +256,11 @@ export default function RegistrarAgua({
             >
               <AlertTriangle size={14} className="mt-0.5 shrink-0" />
               <span>{revisionToma.motivo}</span>
+            </p>
+          )}
+          {revisionToma.nota && !noCabe && (
+            <p className="mt-3 rounded-xl bg-[var(--color-agua)]/10 px-3 py-2 text-xs text-[var(--color-agua-clara)]">
+              {revisionToma.nota}
             </p>
           )}
           {revisionToma.sospecha && (
@@ -288,7 +344,9 @@ export default function RegistrarAgua({
             ? 'Guardando...'
             : noCabe
               ? 'Ahora no cabe más agua'
-              : `Registrar ${mlQueSeGuardan} ml para ${mascota.nombre}`}
+              : revisionToma.mlEfectivo !== mlQueSeGuardan
+                ? `Registrar ${mlQueSeGuardan} ml · entran ${revisionToma.mlEfectivo}`
+                : `Registrar ${mlQueSeGuardan} ml para ${mascota.nombre}`}
         </button>
       </div>
     </div>

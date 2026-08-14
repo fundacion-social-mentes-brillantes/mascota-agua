@@ -4,6 +4,13 @@
 // (EFSA 2010, IOM/NASEM 2004, OMS, ACSM). Si algun dia hay que corregir un
 // numero, se corrige AQUI y en ese documento: no hay cifras sueltas por el
 // resto del codigo.
+import {
+  AVISO_TOPE_CERVEZA,
+  bebidaPorId,
+  cafeinaDe,
+  CERVEZA_QUE_AUN_APORTA_ML,
+  esAlcohol,
+} from './bebidas'
 import type { EstadoCuerpo, NivelCuerpo, Perfil, Registro } from './tipos'
 
 /** Topes de seguridad. La app nunca recomienda por fuera de estos limites. */
@@ -299,9 +306,28 @@ export function calcularEstadoCuerpo(
   registros: Registro[],
   ahora = Date.now(),
 ): EstadoCuerpo {
+  // El cuerpo se llena con TODO el liquido: el tinto y la gaseosa no
+  // deshidratan, y fingir que si seria mentir. La META, en cambio, es solo de
+  // agua. Son dos cuentas distintas a proposito.
   const totalHoyMl = registros.reduce((total, registro) => total + registro.ml, 0)
+  const aguaHoyMl = registros.reduce(
+    (total, r) => total + (bebidaPorId(r.bebida).cuentaParaLaMeta ? r.ml : 0),
+    0,
+  )
+  const otrasBebidasMl = totalHoyMl - aguaHoyMl
+  const cafeinaHoyMg = registros.reduce(
+    (total, r) => total + cafeinaDe(r.mlBruto ?? r.ml, r.bebida),
+    0,
+  )
+  const alcoholHoyMl = registros.reduce(
+    (total, r) => total + (esAlcohol(r.bebida) ? (r.mlBruto ?? r.ml) : 0),
+    0,
+  )
+
   const metaMl = perfil.metaMl
-  const porcentaje = metaMl > 0 ? Math.min(150, Math.round((totalHoyMl * 100) / metaMl)) : 0
+  // El porcentaje de la medalla es el del AGUA.
+  const porcentaje = metaMl > 0 ? Math.min(150, Math.round((aguaHoyMl * 100) / metaMl)) : 0
+  const porcentajeLiquido = metaMl > 0 ? Math.min(150, Math.round((totalHoyMl * 100) / metaMl)) : 0
 
   const ultimo = registros.reduce((masReciente, registro) => Math.max(masReciente, registro.hora), 0)
   const horasSinBeber = ultimo > 0 ? (ahora - ultimo) / 3_600_000 : Number.POSITIVE_INFINITY
@@ -335,8 +361,13 @@ export function calcularEstadoCuerpo(
   return {
     horasSinBeber,
     totalHoyMl,
+    aguaHoyMl,
+    otrasBebidasMl,
+    cafeinaHoyMg,
+    alcoholHoyMl,
     metaMl,
     porcentaje,
+    porcentajeLiquido,
     hidratacion,
     mlUltimaHora,
     nivel: encontrado.nivel,
@@ -376,7 +407,16 @@ export function consejoAhora(perfil: Perfil, estado: EstadoCuerpo, ahora = Date.
     }
   }
 
-  const faltante = Math.max(0, estado.metaMl - estado.totalHoyMl)
+  // A partir de aqui la cuenta es de AGUA, no de liquido: la meta es de agua.
+  // Lo demas ya se conto para el cuerpo, pero la promesa era esta.
+  const faltante = Math.max(0, estado.metaMl - estado.aguaHoyMl)
+  // Se menciona lo otro para que la mascota no suene como si no se hubiera
+  // dado cuenta de lo que la persona tomo.
+  const coletilla =
+    estado.otrasBebidasMl >= 200
+      ? ` (los ${estado.otrasBebidasMl} ml de otras bebidas ya le sirvieron a tu cuerpo, pero la meta es de agua)`
+      : ''
+
   if (faltante === 0) {
     return {
       accion: 'seguir',
@@ -422,7 +462,7 @@ export function consejoAhora(perfil: Perfil, estado: EstadoCuerpo, ahora = Date.
   }
 
   const esperado = metaEsperadaAhora(perfil, ahora)
-  const atraso = esperado - estado.totalHoyMl
+  const atraso = esperado - estado.aguaHoyMl
   // Cuanto cabe sin pasarse del tope por hora.
   const cabe = Math.max(0, TOPES.maximoPorHoraMl - estado.mlUltimaHora)
 
@@ -430,7 +470,7 @@ export function consejoAhora(perfil: Perfil, estado: EstadoCuerpo, ahora = Date.
     return {
       accion: 'seguir',
       ml: 0,
-      resumen: `Vas al ritmo que toca para esta hora. Faltan ${faltante} ml, pero repartidos en lo que queda del día.`,
+      resumen: `Vas al ritmo que toca para esta hora. Faltan ${faltante} ml, pero repartidos en lo que queda del día.${coletilla}`,
     }
   }
 
@@ -439,7 +479,7 @@ export function consejoAhora(perfil: Perfil, estado: EstadoCuerpo, ahora = Date.
   return {
     accion: 'tomar',
     ml: sugerido,
-    resumen: `Vas ${atraso} ml atrás para la hora que es. Lo sano es recuperarlo de a poquitos: unos ${sugerido} ml ahora, no todo de golpe.`,
+    resumen: `Vas ${atraso} ml atrás para la hora que es. Lo sano es recuperarlo de a poquitos: unos ${sugerido} ml ahora, no todo de golpe.${coletilla}`,
   }
 }
 
@@ -447,10 +487,15 @@ export function consejoAhora(perfil: Perfil, estado: EstadoCuerpo, ahora = Date.
 
 export interface RevisionToma {
   veredicto: 'ok' | 'recortado' | 'rechazado'
-  /** Los ml que de verdad se van a guardar. */
+  /** Lo que cabe en el vaso, ya recortado si hacia falta. */
   mlAceptado: number
+  /** El agua que de verdad entra con eso, ya con el factor de la bebida. */
+  mlEfectivo: number
   /** Por que se recorto o se rechazo, en cristiano. Vacio si todo bien. */
   motivo: string
+  /** Nota sobre la bebida (el descuento, el tope de la cerveza). No es un
+   *  regano: es explicar la cuenta. */
+  nota: string | null
   /** Se enciende cuando el patron no parece de alguien tomando agua. */
   sospecha: string | null
 }
@@ -471,17 +516,21 @@ const VENTANA_SOSPECHA_MS = 10 * 60_000
 export function revisarToma(
   mlPedidos: number,
   registros: Registro[],
+  bebidaId?: string,
   ahora = Date.now(),
 ): RevisionToma {
+  const bebida = bebidaPorId(bebidaId)
   const ml = Math.round(mlPedidos)
+  const vacio = { mlAceptado: 0, mlEfectivo: 0, nota: null, sospecha: null } as const
   if (!Number.isFinite(ml) || ml <= 0) {
-    return { veredicto: 'rechazado', mlAceptado: 0, motivo: 'Esa cantidad no existe.', sospecha: null }
+    return { veredicto: 'rechazado', ...vacio, motivo: 'Esa cantidad no existe.' }
   }
 
   const totalHoy = registros.reduce((total, r) => total + r.ml, 0)
   const haceUnaHora = ahora - 3_600_000
-  const ultimaHora = registros.filter((r) => r.hora >= haceUnaHora)
-  const mlUltimaHora = ultimaHora.reduce((total, r) => total + r.ml, 0)
+  const mlUltimaHora = registros
+    .filter((r) => r.hora >= haceUnaHora)
+    .reduce((total, r) => total + r.ml, 0)
 
   const seguidas = registros.filter((r) => r.hora >= ahora - VENTANA_SOSPECHA_MS).length
   const sospecha =
@@ -489,33 +538,87 @@ export function revisarToma(
       ? `Van ${seguidas} registros en diez minutos. Si es de verdad, para; y si es por probar, mejor no: el número de la pantalla es tu cuerpo, no un puntaje.`
       : null
 
-  // Los tres techos, del mas estrecho al mas ancho.
+  // El tope por toma es del ESTOMAGO, asi que va sobre el volumen del vaso:
+  // 700 ml de gaseosa pesan igual que 700 ml de agua.
   const cabeEnLaToma = TOPES.maximoPorTomaMl
-  const cabeEnLaHora = Math.max(0, TOPES.maximoPorHoraMl - mlUltimaHora)
-  const cabeEnElDia = Math.max(0, TOPES.maximoMl - totalHoy)
+  // Los de hora y dia son del RINON, asi que van sobre el agua efectiva. Por
+  // eso se convierten a volumen de esta bebida antes de comparar.
+  const aVolumen = (efectivo: number) =>
+    bebida.factor > 0 ? Math.floor(efectivo / bebida.factor) : Number.POSITIVE_INFINITY
+  const cabeEnLaHora = aVolumen(Math.max(0, TOPES.maximoPorHoraMl - mlUltimaHora))
+  const cabeEnElDia = aVolumen(Math.max(0, TOPES.maximoMl - totalHoy))
   const cabe = Math.min(cabeEnLaToma, cabeEnLaHora, cabeEnElDia)
 
   if (cabe <= 0) {
     const motivo =
-      cabeEnElDia <= 0
-        ? `Hoy ya vas en ${(totalHoy / 1000).toFixed(1)} L. Más agua no suma: diluye el sodio de la sangre. Seguimos mañana.`
+      TOPES.maximoMl - totalHoy <= 0
+        ? `Hoy ya vas en ${(totalHoy / 1000).toFixed(1)} L de líquido. Más no suma: diluye el sodio de la sangre. Seguimos mañana.`
         : `Ya llevas ${mlUltimaHora} ml en esta hora y el riñón solo alcanza a eliminar cerca de ${TOPES.maximoPorHoraMl}. Deja pasar un rato.`
-    return { veredicto: 'rechazado', mlAceptado: 0, motivo, sospecha }
+    return { veredicto: 'rechazado', ...vacio, motivo }
   }
 
-  if (ml > cabe) {
-    let motivo: string
+  const aceptado = Math.min(ml, cabe)
+  const recortado = aceptado < ml
+
+  let motivo = ''
+  if (recortado) {
     if (cabe === cabeEnElDia) {
-      motivo = `Te anoto ${cabe} ml, que es lo que falta para el tope de ${(TOPES.maximoMl / 1000).toFixed(0)} L del día.`
+      motivo = `Te anoto ${aceptado} ml, que es lo que falta para el tope de ${(TOPES.maximoMl / 1000).toFixed(0)} L de líquido del día.`
     } else if (cabe === cabeEnLaHora) {
-      motivo = `Te anoto ${cabe} ml: con lo de esta hora ya se completan los ${TOPES.maximoPorHoraMl} que el riñón alcanza a eliminar.`
+      motivo = `Te anoto ${aceptado} ml: con lo de esta hora ya se completan los ${TOPES.maximoPorHoraMl} que el riñón alcanza a eliminar.`
     } else {
-      motivo = `Te anoto ${cabe} ml. Más de eso de un solo golpe no alcanza a salir del estómago dentro de la hora, así que no hidrata más rápido: se queda pesando.`
+      motivo = `Te anoto ${aceptado} ml. Más de eso de un solo golpe no alcanza a salir del estómago dentro de la hora, así que no hidrata más rápido: se queda pesando.`
     }
-    return { veredicto: 'recortado', mlAceptado: cabe, motivo, sospecha }
   }
 
-  return { veredicto: 'ok', mlAceptado: ml, motivo: '', sospecha }
+  return {
+    veredicto: recortado ? 'recortado' : 'ok',
+    mlAceptado: aceptado,
+    mlEfectivo: liquidoDeEstaToma(aceptado, bebida.id, registros),
+    motivo,
+    nota: notaDeLaBebida(aceptado, bebida.id, registros),
+    sospecha,
+  }
+}
+
+/**
+ * El agua que entra con esta toma, contando el tope de la cerveza.
+ *
+ * La cerveza aporta su agua hasta cierta cantidad al dia; lo que pase de ahi
+ * aporta cero. Si una toma queda a caballo, se parte: la parte de adentro
+ * aporta y la de afuera no.
+ */
+function liquidoDeEstaToma(mlBruto: number, bebidaId: string, registros: Registro[]): number {
+  const bebida = bebidaPorId(bebidaId)
+  if (bebida.id !== 'cerveza') return Math.round(mlBruto * bebida.factor)
+
+  const cervezaHoy = registros
+    .filter((r) => r.bebida === 'cerveza')
+    .reduce((total, r) => total + (r.mlBruto ?? r.ml), 0)
+  const dentro = Math.max(0, Math.min(mlBruto, CERVEZA_QUE_AUN_APORTA_ML - cervezaHoy))
+  return Math.round(dentro * bebida.factor)
+}
+
+/** La explicacion de la cuenta. No regana: solo dice de donde sale el numero. */
+function notaDeLaBebida(mlBruto: number, bebidaId: string, registros: Registro[]): string | null {
+  const bebida = bebidaPorId(bebidaId)
+  const efectivo = liquidoDeEstaToma(mlBruto, bebida.id, registros)
+
+  if (bebida.id === 'cerveza' && efectivo < Math.round(mlBruto * bebida.factor)) {
+    return AVISO_TOPE_CERVEZA
+  }
+  if (bebida.factor === 0) {
+    return 'Queda anotado, pero no lo cuento como líquido: en esta cantidad de alcohol ya no hay dato confiable, y prefiero pedirte agua de más que de menos.'
+  }
+  if (bebida.factor < 1) {
+    const queOcupa =
+      bebida.clase === 'alcohol' ? 'el alcohol' : 'el azúcar, la leche o la grasa'
+    return `De esos ${mlBruto} ml, ${efectivo} son agua. El resto es ${queOcupa}, que ocupa lugar.`
+  }
+  if (!bebida.cuentaParaLaMeta) {
+    return 'Entra completo a tu cuerpo, pero no cuenta para la meta: la meta es de agua.'
+  }
+  return null
 }
 
 /** Cada cuanto conviene recordar, segun como venga el dia. */

@@ -56,6 +56,7 @@ export default function Ajustes({
   const [despertar, setDespertar] = useState(perfil.horaDespertar)
   const [dormir, setDormir] = useState(perfil.horaDormir)
   const [avisos, setAvisos] = useState(perfil.recordatoriosActivos)
+  const [alcohol, setAlcohol] = useState(Boolean(perfil.registrarAlcohol))
   const [, setPermiso] = useState(estadoDeLosAvisos())
   const [fotos, setFotos] = useState(0)
   const [mensaje, setMensaje] = useState<string | null>(null)
@@ -113,6 +114,7 @@ export default function Ajustes({
           horaDespertar: despertar,
           horaDormir: dormir,
           recordatoriosActivos: avisos,
+          registrarAlcohol: alcohol,
           metaMl: usaManual ? manual : calculada.metaMl,
           ...(usaManual ? { metaManualMl: manual } : {}),
         },
@@ -356,6 +358,30 @@ export default function Ajustes({
           extremo, ya no es mejor: es riesgo de diluir el sodio de la sangre.
         </p>
       </Bloque>
+
+      {/* El alcohol viene APAGADO de fabrica: quien lo necesita lo prende, y a
+          los demas la app nunca les propone una cerveza. Para menores de edad
+          la opcion no existe, sin sermon. */}
+      {perfil.edad >= 18 && (
+        <Bloque titulo="Qué puedo registrar">
+          <label className="flex items-start gap-3 rounded-2xl bg-[var(--color-fondo-2)] p-3.5">
+            <input
+              type="checkbox"
+              checked={alcohol}
+              onChange={(e) => setAlcohol(e.target.checked)}
+              className="mt-0.5 h-5 w-5 accent-[var(--color-agua)]"
+            />
+            <span className="text-sm">
+              Poder registrar cerveza y trago
+              <span className="mt-1 block text-xs leading-relaxed text-[var(--color-texto-suave)]">
+                Una cerveza es casi toda agua y no te deshidrata, así que su
+                líquido cuenta para tu cuerpo. Nunca cuenta para la meta ni para
+                la racha, y la app nunca te va a proponer una.
+              </span>
+            </span>
+          </label>
+        </Bloque>
+      )}
 
       <Bloque titulo="Horarios y avisos">
         <div className="mb-3 grid grid-cols-2 gap-3">

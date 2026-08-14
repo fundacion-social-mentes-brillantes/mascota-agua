@@ -5,6 +5,7 @@
 // poco que pasarse hasta hacerse dano. Por eso aqui se ven los cuatro y donde
 // cae uno hoy.
 import { franjaDelDia, minimoVitalMl, zonaDelDia, type ZonaDelDia } from '../lib/hidratacion'
+import { CAFEINA_MUCHA_MG, CAFEINA_QUE_YA_SE_NOTA_MG } from '../lib/bebidas'
 import type { EstadoCuerpo, Perfil } from '../lib/tipos'
 
 const TEXTO_ZONA: Record<ZonaDelDia, { titulo: string; explica: string; color: string }> = {
@@ -56,12 +57,32 @@ export default function FranjaAgua({ perfil, estado }: { perfil: Perfil; estado:
       <div className="mb-1 flex items-baseline justify-between">
         <h2 className="text-sm font-bold">Mi franja de hoy</h2>
         <span className="text-xs text-[var(--color-texto-suave)]">
-          {estado.totalHoyMl} ml tomados
+          {estado.totalHoyMl} ml de líquido
         </span>
       </div>
       <p className="mb-4 text-xs font-semibold" style={{ color: info.color }}>
         {info.titulo}
       </p>
+
+      {/* Lo que llena el cuerpo y lo que cuenta para la meta son dos cosas.
+          Si no se ven separadas, la persona no entiende por que la barra va
+          alta y la meta no se cumple. */}
+      {estado.otrasBebidasMl > 0 && (
+        <dl className="mb-4 grid grid-cols-2 gap-2 rounded-2xl bg-[var(--color-fondo-2)] p-3 text-xs">
+          <div>
+            <dt className="text-[var(--color-texto-suave)]">Agua (la meta)</dt>
+            <dd className="font-bold text-[var(--color-agua-clara)]">{estado.aguaHoyMl} ml</dd>
+          </div>
+          <div>
+            <dt className="text-[var(--color-texto-suave)]">Otras bebidas</dt>
+            <dd className="font-bold">{estado.otrasBebidasMl} ml</dd>
+          </div>
+          <p className="col-span-2 text-[10px] leading-relaxed text-[var(--color-texto-suave)]">
+            Las dos te sirven: la barra de arriba las suma porque tu cuerpo no
+            pregunta de dónde vino el agua. La meta sí es solo de agua.
+          </p>
+        </dl>
+      )}
 
       {/* La barra: zonas de color de fondo y una marca de donde va hoy. */}
       <div className="relative mb-1.5 h-3 overflow-hidden rounded-full bg-[var(--color-fondo-2)]">
@@ -116,6 +137,32 @@ export default function FranjaAgua({ perfil, estado }: { perfil: Perfil; estado:
       </div>
 
       <p className="text-xs leading-relaxed text-[var(--color-texto-suave)]">{info.explica}</p>
+
+      {/* La cafeina se INFORMA y ya. No descuenta liquido: no existe una cifra
+          publicada para eso, y esta app no se inventa multiplicadores. */}
+      {estado.cafeinaHoyMg > 0 && (
+        <p
+          className={`mt-3 rounded-xl px-3 py-2 text-xs leading-relaxed ${
+            estado.cafeinaHoyMg >= CAFEINA_QUE_YA_SE_NOTA_MG
+              ? 'bg-[var(--color-alerta)]/12 text-[var(--color-alerta)]'
+              : 'bg-[var(--color-fondo-2)] text-[var(--color-texto-suave)]'
+          }`}
+        >
+          <strong>{estado.cafeinaHoyMg} mg de cafeína hoy.</strong>{' '}
+          {estado.cafeinaHoyMg >= CAFEINA_MUCHA_MG
+            ? `Pasaste de ${CAFEINA_MUCHA_MG} mg, que es lo que se considera mucho para un adulto sano.`
+            : estado.cafeinaHoyMg >= CAFEINA_QUE_YA_SE_NOTA_MG
+              ? `Desde unos ${CAFEINA_QUE_YA_SE_NOTA_MG} mg la cafeína sí te hace orinar un poco más. No te quito nada del líquido: es un dato, no un regaño.`
+              : 'Todavía lejos del punto donde empieza a hacerte orinar más.'}
+        </p>
+      )}
+
+      {estado.alcoholHoyMl > 0 && (
+        <p className="mt-2 rounded-xl bg-[var(--color-fondo-2)] px-3 py-2 text-xs leading-relaxed text-[var(--color-texto-suave)]">
+          {estado.alcoholHoyMl} ml de bebidas con alcohol. Quedan anotados; no
+          cuentan para la meta ni para la medalla.
+        </p>
+      )}
 
       <details className="mt-3 border-t border-[var(--color-borde)] pt-3">
         <summary className="cursor-pointer text-xs text-[var(--color-agua-clara)]">

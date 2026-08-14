@@ -41,7 +41,14 @@ function contextoDe(perfil: Perfil, mascota: Mascota, estado: EstadoCuerpo) {
       requiereMedico: perfil.requiereMedico,
     },
     hoy: {
+      // tomadoMl es el LIQUIDO total (todas las bebidas). aguaMl es lo que
+      // cuenta para la meta. La mascota tiene que poder distinguirlos: si hoy
+      // solo hubo gaseosa, el cuerpo va bien pero la promesa no se cumplio.
       tomadoMl: estado.totalHoyMl,
+      aguaMl: estado.aguaHoyMl,
+      otrasBebidasMl: estado.otrasBebidasMl,
+      cafeinaMg: estado.cafeinaHoyMg,
+      alcoholMl: estado.alcoholHoyMl,
       metaMl: estado.metaMl,
       porcentaje: estado.porcentaje,
       horasSinBeber: Number.isFinite(estado.horasSinBeber)

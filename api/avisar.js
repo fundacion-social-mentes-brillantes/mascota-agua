@@ -106,7 +106,10 @@ export default async function handler(req, res) {
       }
 
       // 2. ¿Ya cumplió?
-      const tomado = Number(datos.totalHoyMl ?? 0)
+      // Para los avisos manda el AGUA, no el liquido total: si hoy solo tomo
+      // gaseosa, el cuerpo va bien pero la meta sigue sin cumplirse, y ese es
+      // justo el dia en que la mascota tiene algo que decir.
+      const tomado = Number(datos.aguaHoyMl ?? datos.totalHoyMl ?? 0)
       const meta = Number(datos.metaMl ?? 2000)
       if (meta > 0 && tomado >= meta) {
         resumen.alDia += 1

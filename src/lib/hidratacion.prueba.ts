@@ -87,7 +87,7 @@ let hist: Registro[] = []
 const arranque = aLas(9)
 for (let i = 0; i < 6; i++) {
   const ahora = arranque + i * 60_000 // uno por minuto
-  const r = revisarToma(500, hist, ahora)
+  const r = revisarToma(500, hist, 'agua', ahora)
   console.log(
     `  intento ${i + 1}: pidio 500 -> ${r.veredicto.padEnd(10)} guarda ${String(r.mlAceptado).padStart(3)} ml  ${r.motivo}`,
   )
@@ -100,7 +100,7 @@ console.log('=== ANTI-TRAMPA: el listo que registra 100 ml cada minuto ===')
 let hist2: Registro[] = []
 for (let i = 0; i < 7; i++) {
   const ahora = arranque + i * 60_000
-  const r = revisarToma(100, hist2, ahora)
+  const r = revisarToma(100, hist2, 'agua', ahora)
   const aviso = r.sospecha ? '  <-- ' + r.sospecha : ''
   console.log(`  intento ${i + 1}: ${r.veredicto.padEnd(10)} guarda ${String(r.mlAceptado).padStart(3)} ml${aviso}`)
   if (r.mlAceptado > 0) hist2 = [...hist2, { id: String(i), ml: r.mlAceptado, hora: ahora, dia: 'prueba', recipiente: 'vaso', verificacion: 'sin-foto', tieneFotoLocal: false }]
@@ -108,5 +108,79 @@ for (let i = 0; i < 7; i++) {
 
 console.log('')
 console.log('=== ANTI-TRAMPA: un vaso imposible de 3 litros ===')
-const r3 = revisarToma(3000, [], aLas(9))
+const r3 = revisarToma(3000, [], 'agua', aLas(9))
 console.log(`  ${r3.veredicto} -> ${r3.mlAceptado} ml. ${r3.motivo}`)
+
+console.log('')
+console.log('=== BEBIDAS: cuanto entra de verdad ===')
+for (const b of ['agua', 'agua-gas', 'tinto', 'gaseosa', 'jugo', 'cerveza', 'trago']) {
+  const r = revisarToma(350, [], b, aLas(10))
+  console.log(
+    `  350 ml de ${b.padEnd(9)} -> entran ${String(r.mlEfectivo).padStart(3)} ml | ${r.nota ?? '(sin nota)'}`,
+  )
+}
+
+console.log('')
+console.log('=== EL DIA DE SOLO GASEOSA (lo que preocupaba a Sebastian) ===')
+const soloGaseosa: Registro[] = [0, 1, 2, 3].map((i) => ({
+  id: 'g' + i,
+  ml: 450,
+  mlBruto: 500,
+  bebida: 'gaseosa',
+  hora: aLas(9 + i * 2),
+  dia: 'prueba',
+  recipiente: 'botella',
+  verificacion: 'sin-foto',
+  tieneFotoLocal: false,
+}))
+const eGaseosa = calcularEstadoCuerpo(p75, soloGaseosa, aLas(17))
+console.log(`  Liquido que le entro al cuerpo : ${eGaseosa.totalHoyMl} ml`)
+console.log(`  Agua (lo que cuenta la meta)   : ${eGaseosa.aguaHoyMl} ml`)
+console.log(`  Otras bebidas                  : ${eGaseosa.otrasBebidasMl} ml`)
+console.log(`  Cafeina                        : ${eGaseosa.cafeinaHoyMg} mg`)
+console.log(`  Como se ve la mascota          : ${eGaseosa.hidratacion}/100 (${eGaseosa.nivel})`)
+console.log(`  Medalla del agua               : ${eGaseosa.porcentaje}%`)
+const cGaseosa = consejoAhora(p75, eGaseosa, aLas(17))
+console.log(`  Consejo: ${cGaseosa.accion.toUpperCase()} ${cGaseosa.ml} ml`)
+console.log(`           ${cGaseosa.resumen}`)
+
+console.log('')
+console.log('=== TOPE DE LA CERVEZA ===')
+let cervezas: Registro[] = []
+for (let i = 0; i < 3; i++) {
+  const r = revisarToma(330, cervezas, 'cerveza', aLas(18 + i))
+  console.log(`  cerveza ${i + 1} de 330 ml -> entran ${r.mlEfectivo} ml | ${r.nota ?? ''}`)
+  cervezas = [
+    ...cervezas,
+    {
+      id: 'c' + i,
+      ml: r.mlEfectivo,
+      mlBruto: r.mlAceptado,
+      bebida: 'cerveza',
+      hora: aLas(18 + i),
+      dia: 'prueba',
+      recipiente: 'botella',
+      verificacion: 'sin-foto',
+      tieneFotoLocal: false,
+    },
+  ]
+}
+
+console.log('')
+console.log('=== CAFEINA: cuando avisa ===')
+for (const tazas of [1, 2, 3, 4]) {
+  const cafes: Registro[] = Array.from({ length: tazas }, (_, i) => ({
+    id: 'k' + i,
+    ml: 180,
+    mlBruto: 180,
+    bebida: 'tinto',
+    hora: aLas(8 + i),
+    dia: 'prueba',
+    recipiente: 'pocillo',
+    verificacion: 'sin-foto',
+    tieneFotoLocal: false,
+  }))
+  const e = calcularEstadoCuerpo(p75, cafes, aLas(14))
+  const aviso = e.cafeinaHoyMg >= 250 ? '  <-- ya avisa' : ''
+  console.log(`  ${tazas} tinto(s) de 180 ml -> ${e.cafeinaHoyMg} mg${aviso}`)
+}

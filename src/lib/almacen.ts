@@ -24,6 +24,7 @@ import {
   type Unsubscribe,
 } from 'firebase/firestore'
 import { obtenerDb } from './firebase'
+import { bebidaPorId } from './bebidas'
 import type { Mascota, MensajeChat, Perfil, Registro, ResumenDia } from './tipos'
 
 /** Día local en AAAA-MM-DD. Usa la hora del teléfono, no UTC. */
@@ -123,12 +124,14 @@ export async function agregarRegistro(
   const registro: Omit<Registro, 'id'> = { ...datos, hora: ahora, dia: diaDe(ahora) }
   const referencia = await addDoc(colRegistros(uid), registro)
   // El total del día se guarda aparte para poder dibujar el histórico sin
-  // tener que leer todos los tragos de todos los días.
+  // tener que leer todos los tragos de todos los días. Van DOS totales: el
+  // líquido (lo que llena a la mascota) y el agua (lo que decide la meta).
   await setDoc(
     doc(colDias(uid), registro.dia),
     {
       dia: registro.dia,
       totalMl: increment(registro.ml),
+      aguaMl: increment(bebidaPorId(registro.bebida).cuentaParaLaMeta ? registro.ml : 0),
       tragos: increment(1),
       conFoto: increment(registro.tieneFotoLocal ? 1 : 0),
       metaMl,
@@ -145,6 +148,7 @@ export async function borrarRegistro(uid: string, registro: Registro): Promise<v
     doc(colDias(uid), registro.dia),
     {
       totalMl: increment(-registro.ml),
+      aguaMl: increment(bebidaPorId(registro.bebida).cuentaParaLaMeta ? -registro.ml : 0),
       tragos: increment(-1),
       conFoto: increment(registro.tieneFotoLocal ? -1 : 0),
     },
@@ -163,6 +167,8 @@ export async function leerHistorico(uid: string, cuantos = 30): Promise<ResumenD
     return {
       dia: datos.dia ?? d.id,
       totalMl: datos.totalMl ?? 0,
+      // Los dias viejos no tienen aguaMl porque entonces todo era agua.
+      aguaMl: datos.aguaMl ?? datos.totalMl ?? 0,
       metaMl: datos.metaMl ?? 0,
       tragos: datos.tragos ?? 0,
       conFoto: datos.conFoto ?? 0,

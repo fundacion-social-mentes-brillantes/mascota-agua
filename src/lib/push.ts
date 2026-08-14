@@ -101,6 +101,8 @@ export async function sincronizarAvisos(
     /** Para que el servidor pueda calcular el minimo vital de esta persona. */
     pesoKg: number
     totalHoyMl: number
+    /** Solo el agua: es lo que decide si la meta se cumplio. */
+    aguaHoyMl: number
     dia: string
     ultimoTrago: number | null
     nombreMascota: string

@@ -149,18 +149,24 @@ export default function App() {
       metaMl: perfil.metaMl,
       pesoKg: perfil.pesoKg,
       totalHoyMl: estado.totalHoyMl,
+      aguaHoyMl: estado.aguaHoyMl,
       dia,
       ultimoTrago: ultimo || null,
       nombreMascota: mascota.nombre,
     })
   }, [usuario, perfil, mascota, estado, registros, dia])
 
+  // LA RACHA ES DE REGISTRAR, NO DE CUMPLIR. Es la pieza que hace que ser
+  // honesto no cueste nada: si hoy solo tomo gaseosa y lo anoto, la racha
+  // sigue viva. La medalla del agua si se pierde, y con eso basta. Si la
+  // racha se rompiera por no cumplir, lo racional seria dejar de registrar
+  // los dias malos -- que son justo los que la app necesita ver.
   const { ayer, racha } = useMemo(() => {
     const hoy = diaDe()
     const anteriores = historico.filter((d) => d.dia !== hoy)
     let seguidos = 0
     for (const d of anteriores) {
-      if (d.metaMl > 0 && d.totalMl >= d.metaMl) seguidos += 1
+      if (d.tragos > 0) seguidos += 1
       else break
     }
     return { ayer: anteriores[0] ?? null, racha: seguidos }

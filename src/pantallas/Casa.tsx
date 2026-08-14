@@ -67,11 +67,11 @@ export default function Casa({
     // hace que la espera se sienta viva y no colgada.
     if (esperando) return 'pensando'
     if (estado.alertaExceso) return 'exceso'
-    if (racha >= 3 && estado.totalHoyMl >= estado.metaMl) return 'en-racha'
+    if (racha >= 3 && estado.aguaHoyMl >= estado.metaMl) return 'en-racha'
     // Si tomó agua hace menos de un minuto, se emociona.
     if (Number.isFinite(estado.horasSinBeber) && estado.horasSinBeber * 60 < 1)
       return 'acaba-de-beber'
-    if (estado.totalHoyMl >= estado.metaMl && estado.metaMl > 0) return 'meta-cumplida'
+    if (estado.aguaHoyMl >= estado.metaMl && estado.metaMl > 0) return 'meta-cumplida'
     const hora = new Date().getHours()
     if (hora >= 23 || hora < 5) return 'de-noche'
     if (hambre) return 'tiene-hambre'
