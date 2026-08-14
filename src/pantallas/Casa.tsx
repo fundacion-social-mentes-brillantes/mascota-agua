@@ -60,7 +60,10 @@ export default function Casa({
   alRegistrar: () => void
 }) {
   const hambre = tieneHambre(mascota.ultimaComida)
-  const faltan = Math.max(0, estado.metaMl - estado.totalHoyMl)
+  // La tarjeta del anillo habla de la META, y la meta es de AGUA. Si el
+  // porcentaje fuera del agua y el numero grande del liquido total, los dos
+  // datos se contradirian en la misma tarjeta -- que fue justo lo que paso.
+  const faltan = Math.max(0, estado.metaMl - estado.aguaHoyMl)
 
   const [burbuja, setBurbuja] = useState(() => saludoAlEntrar(perfil, estado, ayer, racha))
   const [texto, setTexto] = useState('')
@@ -248,11 +251,16 @@ export default function Casa({
         </Anillo>
         <div className="flex-1">
           <p className="text-2xl font-bold text-[var(--color-agua-clara)]">
-            {estado.totalHoyMl} <span className="text-sm font-normal">ml hoy</span>
+            {estado.aguaHoyMl} <span className="text-sm font-normal">ml de agua</span>
           </p>
           <p className="text-sm text-[var(--color-texto-suave)]">
             {faltan > 0 ? `Te faltan ${faltan} ml` : 'Meta cumplida'}
           </p>
+          {estado.otrasBebidasMl > 0 && (
+            <p className="text-xs text-[var(--color-texto-suave)]">
+              + {estado.otrasBebidasMl} ml de otras bebidas, que también te sirvieron
+            </p>
+          )}
           <p className="mt-1 flex items-center gap-1.5 text-xs text-[var(--color-texto-suave)]">
             <Clock size={13} />
             {textoSinBeber(estado.horasSinBeber)}
