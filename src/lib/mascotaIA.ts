@@ -8,7 +8,8 @@ import { obtenerToken } from './firebase'
 import { describirCuerpo } from './frases'
 import { etiquetaDe, organosAhora } from './organos'
 import { consejoAhora } from './hidratacion'
-import type { EstadoCuerpo, Mascota, MensajeChat, Perfil } from './tipos'
+import { bebidaPorId } from './bebidas'
+import type { EstadoCuerpo, Mascota, MensajeChat, Perfil, Registro } from './tipos'
 
 export interface RespuestaMascota {
   texto: string
@@ -27,7 +28,19 @@ function respuestaDeRepuesto(estado: EstadoCuerpo, mascota: Mascota): string {
 }
 
 /** Todo lo que la mascota necesita saber de ti para hablar con sentido. */
-function contextoDe(perfil: Perfil, mascota: Mascota, estado: EstadoCuerpo) {
+/** Que tomo hoy, agrupado por bebida. Para que la mascota no adivine. */
+function resumirBebidas(registros: Registro[]): string[] {
+  const porBebida = new Map<string, number>()
+  for (const r of registros) {
+    const nombre = bebidaPorId(r.bebida).nombre
+    porBebida.set(nombre, (porBebida.get(nombre) ?? 0) + (r.mlBruto ?? r.ml))
+  }
+  return [...porBebida.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .map(([nombre, ml]) => `${nombre}: ${ml} ml`)
+}
+
+function contextoDe(perfil: Perfil, mascota: Mascota, estado: EstadoCuerpo, registros: Registro[]) {
   return {
     mascota: {
       nombre: mascota.nombre,
@@ -49,6 +62,10 @@ function contextoDe(perfil: Perfil, mascota: Mascota, estado: EstadoCuerpo) {
       otrasBebidasMl: estado.otrasBebidasMl,
       cafeinaMg: estado.cafeinaHoyMg,
       alcoholMl: estado.alcoholHoyMl,
+      // Las bebidas de verdad, con nombre y cantidad. Sin esto el modelo se
+      // las inventa: en una prueba dijo "con el tinto y la gaseosa" cuando
+      // la persona solo habia tomado cerveza.
+      bebidasDeHoy: resumirBebidas(registros),
       metaMl: estado.metaMl,
       porcentaje: estado.porcentaje,
       horasSinBeber: Number.isFinite(estado.horasSinBeber)
@@ -87,6 +104,7 @@ export async function hablarConLaMascota(
   mascota: Mascota,
   estado: EstadoCuerpo,
   anteriores: MensajeChat[],
+  registros: Registro[] = [],
 ): Promise<RespuestaMascota> {
   try {
     const token = await obtenerToken()
@@ -96,7 +114,7 @@ export async function hablarConLaMascota(
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify({
         pregunta,
-        contexto: contextoDe(perfil, mascota, estado),
+        contexto: contextoDe(perfil, mascota, estado, registros),
         historial: anteriores.slice(-8).map((m) => ({ de: m.de, texto: m.texto })),
       }),
     })
@@ -120,6 +138,7 @@ export async function pedirBurbuja(
   mascota: Mascota,
   estado: EstadoCuerpo,
   momento: string,
+  registros: Registro[] = [],
 ): Promise<string | null> {
   try {
     const token = await obtenerToken()
@@ -130,7 +149,7 @@ export async function pedirBurbuja(
       body: JSON.stringify({
         tipo: 'burbuja',
         momento,
-        contexto: contextoDe(perfil, mascota, estado),
+        contexto: contextoDe(perfil, mascota, estado, registros),
       }),
     })
     if (!respuesta.ok) return null

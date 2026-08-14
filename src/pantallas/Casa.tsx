@@ -88,7 +88,7 @@ export default function Casa({
     setMiPregunta(limpia)
     setEsperando(true)
     try {
-      const respuesta = await hablarConLaMascota(limpia, perfil, mascota, estado, [])
+      const respuesta = await hablarConLaMascota(limpia, perfil, mascota, estado, [], registros)
       setBurbuja(respuesta.texto)
     } finally {
       setEsperando(false)
@@ -106,7 +106,7 @@ export default function Casa({
       estado.totalHoyMl === 0
         ? 'todavia no ha tomado nada hoy'
         : `acaba de abrir la app y lleva ${estado.totalHoyMl} ml`
-    pedirBurbuja(perfil, mascota, estado, momentoTexto).then((texto) => {
+    pedirBurbuja(perfil, mascota, estado, momentoTexto, registros).then((texto) => {
       if (vivo && texto) setBurbuja(texto)
     })
     return () => {

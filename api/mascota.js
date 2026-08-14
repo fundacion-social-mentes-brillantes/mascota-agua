@@ -107,7 +107,10 @@ function estadoDeAhora(contexto) {
     `- AGUA de hoy: ${hoy.aguaMl ?? hoy.tomadoMl} ml de una meta de ${hoy.metaMl} ml (${hoy.porcentaje}%). Esto es lo que cuenta para la meta.`,
     `- LÍQUIDO total que me entró hoy: ${hoy.tomadoMl} ml. Esto es lo que de verdad me llenó a mí.`,
     hoy.otrasBebidasMl > 0
-      ? `- De esos, ${hoy.otrasBebidasMl} ml vinieron de otras bebidas (tinto, gaseosa, jugo…). Sí me sirvieron; no cuentan para la meta.`
+      ? `- De esos, ${hoy.otrasBebidasMl} ml no eran agua. Sí me sirvieron; no cuentan para la meta.`
+      : '',
+    hoy.bebidasDeHoy?.length
+      ? `- LO QUE TOMÓ HOY, exacto. Si vas a nombrar una bebida, tiene que salir de esta lista; NO adivines ni inventes otras:\n  ${hoy.bebidasDeHoy.join('\n  ')}`
       : '',
     hoy.cafeinaMg > 0 ? `- Cafeína del día: ${hoy.cafeinaMg} mg.` : '',
     hoy.alcoholMl > 0
