@@ -1,0 +1,10 @@
+{
+  "name": "mascota-agua-reloj",
+  "version": "1.0.0",
+  "description": "El despertador que le da un toque a la app cada 30 minutos para que reparta los avisos de agua.",
+  "main": "src/funciones/*.js",
+  "private": true,
+  "dependencies": {
+    "@azure/functions": "^4.7.0"
+  }
+}
