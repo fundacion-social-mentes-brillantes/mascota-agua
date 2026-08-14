@@ -5,13 +5,14 @@
 // la informacion de nadie. No entra al paquete que se publica: Vite solo
 // compila index.html.
 //
-// Se usa con ?pantalla=casa|cuerpo|registrar|organos
+// Se usa con ?pantalla=casa|cuerpo|registrar|icono
 //
 /* eslint-disable react-refresh/only-export-components -- es un punto de
    entrada, no un modulo de la app. */
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import Casa from './pantallas/Casa'
+import MascotaViva from './componentes/MascotaViva'
 import Cuerpo from './pantallas/Cuerpo'
 import RegistrarAgua from './componentes/RegistrarAgua'
 import { calcularEstadoCuerpo } from './lib/hidratacion'
@@ -92,6 +93,33 @@ const sugerencias = loDeSiempre(historial, aLas(10))
 const pantalla = new URLSearchParams(location.search).get('pantalla') ?? 'casa'
 
 function Demo() {
+  // La mascota sola y contenta: es la cara de la app, la que va en el icono
+  // que la gente ve en su celular. Se dibuja con el MISMO componente que usa
+  // la app, no con un dibujo aparte que despues quede desactualizado.
+  if (pantalla === 'icono') {
+    return (
+      <div
+        style={{
+          width: 1024,
+          height: 1024,
+          display: 'grid',
+          placeItems: 'center',
+          background: 'radial-gradient(circle at 50% 38%, #12395c 0%, #061426 62%, #04101d 100%)',
+        }}
+      >
+        <MascotaViva
+          especie="gota"
+          color="#35b6f0"
+          nivel="pleno"
+          hidratacion={88}
+          momento="meta-cumplida"
+          sombrero={null}
+          accesorio={null}
+          tamano={880}
+        />
+      </div>
+    )
+  }
   if (pantalla === 'cuerpo') {
     return (
       <div className="min-h-full bg-[var(--color-fondo)]">

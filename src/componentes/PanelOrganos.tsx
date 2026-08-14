@@ -40,7 +40,7 @@ export default function PanelOrganos({ estado }: { estado: EstadoCuerpo }) {
         <div className="mb-1 flex items-baseline justify-between gap-2">
           <h2 className="text-sm font-bold">Mis órganos ahora mismo</h2>
           <span className="shrink-0 text-xs text-[var(--color-texto-suave)]">
-            {estado.totalHoyMl} / {estado.metaMl} ml
+            {estado.totalHoyMl} ml de líquido
           </span>
         </div>
         <p className="text-xs text-[var(--color-texto-suave)]">{resumen}</p>
