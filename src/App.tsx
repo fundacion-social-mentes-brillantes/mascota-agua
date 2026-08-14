@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { onAuthStateChanged, getRedirectResult } from 'firebase/auth'
-import { HeartPulse, Home, LineChart, Settings, ShoppingBag } from 'lucide-react'
+import { HeartPulse, Home, LineChart, Settings, ShieldCheck, ShoppingBag } from 'lucide-react'
 import { firebaseConfigurado, obtenerAuth, type User } from './lib/firebase'
 import {
   diaDe,
@@ -20,12 +20,18 @@ import Linea from './pantallas/Linea'
 import Cuerpo from './pantallas/Cuerpo'
 import Tienda from './pantallas/Tienda'
 import Ajustes from './pantallas/Ajustes'
+import Admin from './pantallas/Admin'
 import RegistrarAgua from './componentes/RegistrarAgua'
 import Cargando from './componentes/Cargando'
 import { useRecordatorios } from './lib/recordatorios'
 import { sincronizarAvisos } from './lib/push'
 
-type Seccion = 'casa' | 'linea' | 'cuerpo' | 'tienda' | 'ajustes'
+type Seccion = 'casa' | 'linea' | 'cuerpo' | 'tienda' | 'ajustes' | 'panel'
+
+/** El correo de la Fundacion ve una pestana mas. El candado de verdad no es
+ *  esta pestana sino /api/admin, que comprueba el correo contra Google: aqui
+ *  solo se decide si se DIBUJA o no. */
+const CORREO_ADMIN = 'fundacionsocial@gimnasioemocionalmb.com'
 
 const PESTANAS: { id: Seccion; texto: string; Icono: typeof Home }[] = [
   { id: 'casa', texto: 'Mascota', Icono: Home },
@@ -34,6 +40,8 @@ const PESTANAS: { id: Seccion; texto: string; Icono: typeof Home }[] = [
   { id: 'tienda', texto: 'Tienda', Icono: ShoppingBag },
   { id: 'ajustes', texto: 'Ajustes', Icono: Settings },
 ]
+
+const PESTANA_PANEL = { id: 'panel' as const, texto: 'Panel', Icono: ShieldCheck }
 
 export default function App() {
   const [usuario, setUsuario] = useState<User | null>(null)
@@ -139,6 +147,7 @@ export default function App() {
       horaDespertar: perfil.horaDespertar,
       horaDormir: perfil.horaDormir,
       metaMl: perfil.metaMl,
+      pesoKg: perfil.pesoKg,
       totalHoyMl: estado.totalHoyMl,
       dia,
       ultimoTrago: ultimo || null,
@@ -160,6 +169,7 @@ export default function App() {
   useRecordatorios(perfil, estado, mascota?.nombre ?? 'Tu mascota')
 
   const todoListo = perfilCargadoDe === usuario?.uid && mascotaCargadaDe === usuario?.uid
+  const esAdmin = (usuario?.email ?? '').toLowerCase() === CORREO_ADMIN
 
   const alGuardarMascota = useCallback(
     async (nueva: Mascota) => {
@@ -231,6 +241,7 @@ export default function App() {
         {seccion === 'tienda' && (
           <Tienda mascota={mascota} alGuardar={alGuardarMascota} />
         )}
+        {seccion === 'panel' && <Admin />}
         {seccion === 'ajustes' && (
           <Ajustes
             uid={usuario.uid}
@@ -244,7 +255,7 @@ export default function App() {
 
       <nav className="zona-segura-abajo fixed inset-x-0 bottom-0 border-t border-[var(--color-borde)] bg-[var(--color-fondo-2)]/95 backdrop-blur">
         <div className="mx-auto flex max-w-lg items-center justify-around px-2 py-1.5">
-          {PESTANAS.map(({ id, texto, Icono }) => {
+          {(esAdmin ? [...PESTANAS, PESTANA_PANEL] : PESTANAS).map(({ id, texto, Icono }) => {
             const activa = seccion === id
             return (
               <button
@@ -271,7 +282,7 @@ export default function App() {
           uid={usuario.uid}
           perfil={perfil}
           mascota={mascota}
-          estado={estado}
+          registros={registros}
           alCerrar={() => setRegistrando(false)}
         />
       )}

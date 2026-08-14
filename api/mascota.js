@@ -5,7 +5,8 @@
 // Si no hay clave configurada, responde 501 y la app usa las frases propias
 // de la mascota (no se rompe nada).
 
-import { quienLlama } from './_quien-llama.js'
+import { quienLlamaCompleto } from './_quien-llama.js'
+import { anotarUso, tokenDelRobot } from './_firestore-servidor.js'
 
 const URL_DEEPSEEK = 'https://api.deepseek.com/chat/completions'
 // Mismo modelo que el resto de los proyectos de GEMB: rapido y barato.
@@ -123,11 +124,12 @@ export default async function handler(req, res) {
 
   // Primero: quien llama. Va ANTES de mirar la configuracion para no contarle
   // a un desconocido si tenemos clave o no.
-  const uid = await quienLlama(req)
-  if (!uid) {
+  const quien = await quienLlamaCompleto(req)
+  if (!quien?.uid) {
     res.status(401).json({ error: 'Hay que entrar a la app primero' })
     return
   }
+  const uid = quien.uid
 
   const clave = process.env.DEEPSEEK_API_KEY
   if (!clave) {
@@ -203,6 +205,26 @@ export default async function handler(req, res) {
     // Se devuelve el modelo para poder comprobar desde afuera cual contesto
     // de verdad, sin tener que creerle a la configuracion.
     res.status(200).json({ texto, modelo: datos?.model ?? null, penso: !esBurbuja })
+
+    // Y se anota el uso. Va DESPUES de responder y sin await bloqueante: si
+    // Firestore se demora, la mascota ya contesto. Si falla, se pierde un
+    // contador, no la respuesta.
+    const u = datos?.usage ?? {}
+    tokenDelRobot()
+      .then((token) => {
+        if (!token) return
+        return anotarUso(token, uid, {
+          correo: quien?.correo,
+          nombre: quien?.nombre,
+          tipo: esBurbuja ? 'burbuja' : 'pregunta',
+          tokens: {
+            entrada: u.prompt_tokens ?? 0,
+            salida: u.completion_tokens ?? 0,
+            cache: u.prompt_cache_hit_tokens ?? 0,
+          },
+        })
+      })
+      .catch(() => {})
   } catch (fallo) {
     console.error('Error hablando con DeepSeek:', fallo)
     res.status(500).json({ error: 'Fallo interno' })

@@ -98,6 +98,8 @@ export async function sincronizarAvisos(
     horaDespertar: string
     horaDormir: string
     metaMl: number
+    /** Para que el servidor pueda calcular el minimo vital de esta persona. */
+    pesoKg: number
     totalHoyMl: number
     dia: string
     ultimoTrago: number | null

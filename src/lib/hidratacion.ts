@@ -8,16 +8,84 @@ import type { EstadoCuerpo, NivelCuerpo, Perfil, Registro } from './tipos'
 
 /** Topes de seguridad. La app nunca recomienda por fuera de estos limites. */
 export const TOPES = {
-  /** Piso absoluto, para cualquier edad. */
+  /** La META nunca se propone por debajo de aqui, sea quien sea la persona.
+   *  Ojo: NO es el minimo vital, que es mas bajo y se calcula por peso mas
+   *  abajo. Este es el piso de una meta razonable para un adulto. */
   minimoMl: 1300,
   /** Ni mas alta: por encima empieza el riesgo de hiponatremia por dilucion. */
   maximoMl: 4000,
-  /** El rinon solo puede eliminar cerca de 0,8-1,0 L por hora (778-1043 ml/h
-   *  medidos con la hormona antidiuretica al minimo). */
+  /** El rinon solo puede eliminar cerca de 0,7-1,0 L por hora. Se toma el
+   *  extremo prudente: 800 ml. Beber por encima de ese ritmo durante varias
+   *  horas seguidas es justo lo que produce la intoxicacion por agua. */
   maximoPorHoraMl: 800,
-  /** De un solo golpe tampoco: mejor repartido. */
+  /** De un solo golpe tampoco. El estomago vacia bien volumenes de 240-800 ml,
+   *  pero por encima de unos 7 ml por kilo el vaciado ya no termina dentro de
+   *  la hora: el agua se queda pesando y no hidrata mas rapido. */
   maximoPorTomaMl: 700,
 } as const
+
+/**
+ * Perdidas que el cuerpo tiene SI O SI, aunque uno se quede quieto todo el dia.
+ *
+ * - Insensibles (pulmon y piel): 0,4-0,5 ml por kilo y por hora. Se toma 0,45,
+ *   que en 24 horas son 10,8 ml por kilo.
+ * - Orina obligatoria: el rinon no puede concentrar mas alla de ~1200 mOsm/L,
+ *   y hay que sacar cerca de 600 mOsm de desechos al dia. Eso obliga a un
+ *   minimo de unos 500 ml de orina, se tome agua o no.
+ *
+ * La suma es agua TOTAL; como una quinta parte llega con la comida, lo que hay
+ * que BEBER es el 80% de esa cifra.
+ */
+const INSENSIBLES_ML_POR_KILO_DIA = 10.8
+const ORINA_OBLIGATORIA_ML = 500
+
+/**
+ * Los cuatro numeros del dia. Existen porque una sola cifra ("tu meta") no
+ * alcanza: no es lo mismo quedarse corto que quedarse en el hueso, ni pasarse
+ * un poco que pasarse hasta hacerse dano.
+ */
+export interface FranjaDelDia {
+  /** Por debajo de aqui el cuerpo ni siquiera cubre lo que pierde solo. */
+  minimoMl: number
+  /** El equilibrio. Ni de menos ni de mas: es a lo que apunta la app. */
+  metaMl: number
+  /** De la meta hasta aqui es "de mas, pero sin problema". */
+  techoMl: number
+  /** Tope duro. Pasarse de aqui no es merito, es riesgo. */
+  maximoMl: number
+}
+
+/**
+ * El minimo vital de BEBIDA para esta persona. No es una meta ni una
+ * recomendacion: es la raya por debajo de la cual el cuerpo ya esta sacando
+ * agua de donde no debe.
+ */
+export function minimoVitalMl(pesoKg: number): number {
+  const total = pesoKg * INSENSIBLES_ML_POR_KILO_DIA + ORINA_OBLIGATORIA_ML
+  const bebida = total * (1 - PARTE_QUE_VIENE_DE_LA_COMIDA)
+  return Math.max(800, Math.round(bebida / 50) * 50)
+}
+
+/** La franja completa a partir de la meta ya calculada y el peso. */
+export function franjaDelDia(metaMl: number, pesoKg: number): FranjaDelDia {
+  const minimo = Math.min(minimoVitalMl(pesoKg), metaMl)
+  // Un cuarto por encima de la meta sigue siendo un dia normal: hubo calor,
+  // se camino mas, dio sed. De ahi para arriba ya no es equilibrio, es agua
+  // que sobra: no hace dano todavia, pero tampoco aporta nada.
+  const techo = Math.min(TOPES.maximoMl, Math.round((metaMl * 1.25) / 50) * 50)
+  return { minimoMl: minimo, metaMl, techoMl: techo, maximoMl: TOPES.maximoMl }
+}
+
+/** En que parte de la franja va ahora mismo. */
+export type ZonaDelDia = 'en-el-hueso' | 'corto' | 'equilibrio' | 'de-sobra' | 'pasado'
+
+export function zonaDelDia(tomadoMl: number, franja: FranjaDelDia): ZonaDelDia {
+  if (tomadoMl > franja.maximoMl) return 'pasado'
+  if (tomadoMl > franja.techoMl) return 'de-sobra'
+  if (tomadoMl >= franja.metaMl) return 'equilibrio'
+  if (tomadoMl >= franja.minimoMl) return 'corto'
+  return 'en-el-hueso'
+}
 
 /**
  * Piso de bebida al dia para personas adultas, segun ESPEN: al menos 2,0 L
@@ -165,6 +233,44 @@ export function metaEsperadaAhora(perfil: Perfil, ahora = Date.now()): number {
   return Math.round((perfil.metaMl * (minutosAhora - inicio)) / (fin - inicio))
 }
 
+/**
+ * Cuantos minutos faltan para la hora de dormir. Negativo si ya se paso.
+ * Sirve para lo mas delicado del dia: alguien que no tomo nada y ya se le
+ * acabo el tiempo.
+ */
+export function minutosParaDormir(perfil: Perfil, ahora = Date.now()): number {
+  const fecha = new Date(ahora)
+  const minutosAhora = fecha.getHours() * 60 + fecha.getMinutes()
+  const dormir = minutosDeHora(perfil.horaDormir)
+  let faltan = dormir - minutosAhora
+  // Si la hora de dormir ya paso hoy pero es de madrugada, la referencia es
+  // la de anoche: sigue siendo "ya deberia estar durmiendo".
+  if (faltan < -720) faltan += 1440
+  if (faltan > 720) faltan -= 1440
+  return faltan
+}
+
+/**
+ * Cuanta agua es SEGURA de aqui a que se acueste.
+ *
+ * Esto es lo que evita el peor consejo posible: "te faltan 2 litros, tomatelos
+ * ya". Beber mucho pegado a la cama no recupera el dia y si arruina la noche
+ * (cada levantada a orinar fragmenta el sueno; con dos ya hay cansancio al dia
+ * siguiente), y de golpe pasa del ritmo que el rinon puede eliminar.
+ *
+ * Las cantidades salen de lo que recomienda la medicina del sueno:
+ * hasta ~200 ml pegado a la cama no le molesta a casi nadie; entre 200 y 500
+ * ml conviene tener hora y media de margen; de 500 para arriba ya hay que
+ * dejarlo para el dia siguiente.
+ */
+export function maximoSeguroAntesDeDormir(minutosFaltan: number): number {
+  if (minutosFaltan <= 0) return 150
+  if (minutosFaltan < 60) return 200
+  if (minutosFaltan < 90) return 300
+  if (minutosFaltan < 150) return 500
+  return 700
+}
+
 /** True si a esta hora la persona ya deberia estar durmiendo. */
 export function esHoraDeDormir(perfil: Perfil, ahora = Date.now()): boolean {
   const fecha = new Date(ahora)
@@ -279,12 +385,39 @@ export function consejoAhora(perfil: Perfil, estado: EstadoCuerpo, ahora = Date.
     }
   }
 
-  if (esHoraDeDormir(perfil, ahora)) {
+  // La franja del final del dia. Aqui la respuesta correcta casi nunca es
+  // "tomate lo que falta": es decir la verdad de que hoy ya no se recupera.
+  const faltanParaDormir = minutosParaDormir(perfil, ahora)
+  if (faltanParaDormir < 150) {
+    const cabeEnLaNoche = maximoSeguroAntesDeDormir(faltanParaDormir)
+    const cabePorHora = Math.max(0, TOPES.maximoPorHoraMl - estado.mlUltimaHora)
+    const ml = Math.min(cabeEnLaNoche, cabePorHora, faltante)
+    const minimo = minimoVitalMl(perfil.pesoKg)
+    const enElHueso = estado.totalHoyMl < minimo
+
+    if (ml <= 0) {
+      return {
+        accion: 'esperar',
+        ml: 0,
+        resumen: 'Ya no cabe mas agua antes de dormir sin que toque levantarse de madrugada.',
+      }
+    }
+    if (enElHueso) {
+      return {
+        accion: 'tomar',
+        ml,
+        resumen:
+          `Hoy quedaste en ${estado.totalHoyMl} ml y el minimo que el cuerpo gasta solo respirando es ${minimo}. ` +
+          `Ya no se recupera de un tirón: toma ${ml} ml despacio y mañana arrancamos temprano. ` +
+          `Tomarse lo que falta ahora no repone el dia y si obliga a levantarse a orinar.`,
+      }
+    }
     return {
       accion: 'esperar',
-      ml: Math.min(150, faltante),
+      ml,
       resumen:
-        'Ya es hora de dormir: un sorbo pequeno si hay sed, pero no lo que falta de la meta, o toca levantarse de madrugada.',
+        `Falta poco para dormir. ${ml} ml es lo que cabe sin que toque levantarse de madrugada; ` +
+        `los ${faltante} ml que faltan de la meta se recuperan mañana, no esta noche.`,
     }
   }
 
@@ -308,6 +441,81 @@ export function consejoAhora(perfil: Perfil, estado: EstadoCuerpo, ahora = Date.
     ml: sugerido,
     resumen: `Vas ${atraso} ml atras para la hora que es. Lo sano es recuperarlo de a poquitos: unos ${sugerido} ml ahora, no todo de golpe.`,
   }
+}
+
+// ------------------------------------------------- que no se pueda hacer trampa
+
+export interface RevisionToma {
+  veredicto: 'ok' | 'recortado' | 'rechazado'
+  /** Los ml que de verdad se van a guardar. */
+  mlAceptado: number
+  /** Por que se recorto o se rechazo, en cristiano. Vacio si todo bien. */
+  motivo: string
+  /** Se enciende cuando el patron no parece de alguien tomando agua. */
+  sospecha: string | null
+}
+
+/** Cuantos registros seguidos en poco rato ya no parecen agua de verdad. */
+const TOMAS_SEGUIDAS_SOSPECHOSAS = 5
+const VENTANA_SOSPECHA_MS = 10 * 60_000
+
+/**
+ * Revisa una toma ANTES de guardarla.
+ *
+ * La app no puede ver el vaso, asi que no puede saber si alguien miente. Lo
+ * que si puede es negarse a guardar cifras que el cuerpo no podria manejar.
+ * Si darle sin parar al boton subiera la barra, la app estaria ensenando lo
+ * contrario de lo que quiere ensenar: que el numero de la pantalla es el
+ * cuerpo de uno, no un puntaje.
+ */
+export function revisarToma(
+  mlPedidos: number,
+  registros: Registro[],
+  ahora = Date.now(),
+): RevisionToma {
+  const ml = Math.round(mlPedidos)
+  if (!Number.isFinite(ml) || ml <= 0) {
+    return { veredicto: 'rechazado', mlAceptado: 0, motivo: 'Esa cantidad no existe.', sospecha: null }
+  }
+
+  const totalHoy = registros.reduce((total, r) => total + r.ml, 0)
+  const haceUnaHora = ahora - 3_600_000
+  const ultimaHora = registros.filter((r) => r.hora >= haceUnaHora)
+  const mlUltimaHora = ultimaHora.reduce((total, r) => total + r.ml, 0)
+
+  const seguidas = registros.filter((r) => r.hora >= ahora - VENTANA_SOSPECHA_MS).length
+  const sospecha =
+    seguidas >= TOMAS_SEGUIDAS_SOSPECHOSAS
+      ? `Van ${seguidas} registros en diez minutos. Si es de verdad, para; y si es por probar, mejor no: el numero de la pantalla es tu cuerpo, no un puntaje.`
+      : null
+
+  // Los tres techos, del mas estrecho al mas ancho.
+  const cabeEnLaToma = TOPES.maximoPorTomaMl
+  const cabeEnLaHora = Math.max(0, TOPES.maximoPorHoraMl - mlUltimaHora)
+  const cabeEnElDia = Math.max(0, TOPES.maximoMl - totalHoy)
+  const cabe = Math.min(cabeEnLaToma, cabeEnLaHora, cabeEnElDia)
+
+  if (cabe <= 0) {
+    const motivo =
+      cabeEnElDia <= 0
+        ? `Hoy ya vas en ${(totalHoy / 1000).toFixed(1)} L. Mas agua no suma: diluye el sodio de la sangre. Seguimos mañana.`
+        : `Ya llevas ${mlUltimaHora} ml en esta hora y el rinon solo alcanza a eliminar cerca de ${TOPES.maximoPorHoraMl}. Deja pasar un rato.`
+    return { veredicto: 'rechazado', mlAceptado: 0, motivo, sospecha }
+  }
+
+  if (ml > cabe) {
+    let motivo: string
+    if (cabe === cabeEnElDia) {
+      motivo = `Te anoto ${cabe} ml, que es lo que falta para el tope de ${(TOPES.maximoMl / 1000).toFixed(0)} L del dia.`
+    } else if (cabe === cabeEnLaHora) {
+      motivo = `Te anoto ${cabe} ml: con lo de esta hora ya se completan los ${TOPES.maximoPorHoraMl} que el rinon alcanza a eliminar.`
+    } else {
+      motivo = `Te anoto ${cabe} ml. Mas de eso de un solo golpe no alcanza a salir del estomago dentro de la hora, asi que no hidrata mas rapido: se queda pesando.`
+    }
+    return { veredicto: 'recortado', mlAceptado: cabe, motivo, sospecha }
+  }
+
+  return { veredicto: 'ok', mlAceptado: ml, motivo: '', sospecha }
 }
 
 /** Cada cuanto conviene recordar, segun como venga el dia. */

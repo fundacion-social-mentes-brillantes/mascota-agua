@@ -43,6 +43,19 @@ service cloud.firestore {
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['ultimoAviso']);
     }
 
+    // Contadores de uso del modelo, para el panel de la Fundacion.
+    //
+    // Aqui NADIE del lado del navegador entra: ni siquiera para leer lo suyo.
+    // Los escribe el servidor despues de cada llamada a DeepSeek, y los lee
+    // el servidor cuando el correo de la fundacion abre el panel. Si el
+    // contador se pudiera tocar desde el telefono, no serviria para nada.
+    //
+    // Lo que cabe aqui son numeros de uso, el correo y el nombre publico.
+    // Nunca peso, ni IMC, ni fotos, ni lo que la persona escribio.
+    match /uso/{uid} {
+      allow read, write: if esRobotDeAvisos();
+    }
+
     // Cualquier otra ruta queda cerrada.
     match /{documento=**} {
       allow read, write: if false;

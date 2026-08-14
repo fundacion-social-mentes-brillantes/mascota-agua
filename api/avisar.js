@@ -15,6 +15,7 @@
 // cuando no hay nada que decir, asi que llamarla de mas no molesta a nadie.
 import webpush from 'web-push'
 import { anotarAviso, listarAvisos, tokenDelRobot } from './_firestore-servidor.js'
+import { armarAviso } from './_voz-avisos.js'
 
 /** Cada cuanto se puede volver a avisar, segun como venga el dia. */
 function minutosEntreAvisos(porcentaje, horasSinBeber) {
@@ -38,30 +39,13 @@ function minutosLocales(desfaseMinutos) {
   return Math.floor((((utc - desfase) % 1440) + 1440) % 1440)
 }
 
-/** Lo que dice la mascota. En primera persona, como el cuerpo. */
-function mensaje(nombre, porcentaje, faltanMl, horasSinBeber) {
-  if (horasSinBeber >= 6) {
-    return {
-      titulo: `${nombre} está en rojo`,
-      cuerpo: `Llevo ${Math.floor(horasSinBeber)} horas sin una gota. Ya estoy racionando. Un vaso, despacio.`,
-    }
-  }
-  if (horasSinBeber >= 4) {
-    return {
-      titulo: `${nombre} tiene sed`,
-      cuerpo: `Van ${Math.floor(horasSinBeber)} horas. Mi orina ya sale oscura, y eso es que estoy guardando agua.`,
-    }
-  }
-  if (porcentaje < 35) {
-    return {
-      titulo: `${nombre} va flojito`,
-      cuerpo: `Vamos en ${porcentaje}% del día y faltan ${faltanMl} ml. Empecemos ya, que después toca correr.`,
-    }
-  }
-  return {
-    titulo: 'Tengo sed',
-    cuerpo: `Nos faltan ${faltanMl} ml para la meta. Un vaso ahora y seguimos bien.`,
-  }
+/** El minimo que el cuerpo gasta si o si, por peso. Misma cuenta que la app:
+ *  insensibles (10,8 ml/kg al dia) + medio litro de orina obligatoria, menos
+ *  la quinta parte que entra con la comida. */
+function minimoVital(pesoKg) {
+  const peso = Number(pesoKg)
+  if (!Number.isFinite(peso) || peso <= 0) return 1000
+  return Math.max(800, Math.round(((peso * 10.8 + 500) * 0.8) / 50) * 50)
 }
 
 export default async function handler(req, res) {
@@ -88,7 +72,14 @@ export default async function handler(req, res) {
     return
   }
 
-  const resumen = { revisados: 0, enviados: 0, dormidos: 0, alDia: 0, sinSuscripcion: 0 }
+  const resumen = {
+    revisados: 0,
+    enviados: 0,
+    dormidos: 0,
+    alDia: 0,
+    enSuRitmo: 0,
+    sinSuscripcion: 0,
+  }
 
   try {
     const gente = await listarAvisos(token)
@@ -132,12 +123,22 @@ export default async function handler(req, res) {
       const espera = minutosEntreAvisos(porcentaje, horasSinBeber) * 60_000
       if (Date.now() - ultimoAviso < espera) continue
 
-      const { titulo, cuerpo } = mensaje(
-        datos.nombreMascota || 'Tu mascota',
-        porcentaje,
-        Math.max(0, meta - tomado),
+      // 5. ¿Hay algo que valga la pena decir? Si va en su ritmo, no.
+      const aviso = armarAviso({
+        nombre: datos.nombreMascota || 'Tu mascota',
+        tomadoMl: tomado,
+        metaMl: meta,
+        minimoMl: minimoVital(datos.pesoKg),
         horasSinBeber,
-      )
+        minutosAhora: ahora,
+        despertar,
+        dormir,
+      })
+      if (!aviso) {
+        resumen.enSuRitmo += 1
+        continue
+      }
+      const { titulo, cuerpo } = aviso
 
       try {
         await webpush.sendNotification(

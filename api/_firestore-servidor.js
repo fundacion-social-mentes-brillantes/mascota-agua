@@ -80,6 +80,65 @@ export async function listarAvisos(token, tope = 300) {
   }))
 }
 
+// ------------------------------------------------------------ uso del modelo
+
+/**
+ * Anota que alguien acaba de hablar con el modelo.
+ *
+ * Lo escribe SIEMPRE el servidor, nunca el navegador: si el contador viviera
+ * en el telefono, cualquiera podria ponerlo en cero. Aqui solo caben numeros
+ * de uso; ni peso, ni IMC, ni fotos, ni lo que la persona escribio.
+ */
+export async function anotarUso(token, uid, { correo, nombre, tipo, tokens }) {
+  const entero = (n) => ({ integerValue: String(Math.max(0, Math.round(Number(n) || 0))) })
+  const ruta = `projects/${PROYECTO()}/databases/(default)/documents/uso/${uid}`
+
+  // Los contadores suben con incrementos atomicos, para que dos llamadas a la
+  // vez no se pisen. Firestore solo acepta UNA escritura por documento en cada
+  // peticion, asi que los campos fijos y los incrementos van juntos.
+  const fijos = { ultimaVez: entero(Date.now()) }
+  if (correo) fijos.correo = { stringValue: String(correo).slice(0, 120) }
+  if (nombre) fijos.nombre = { stringValue: String(nombre).slice(0, 80) }
+
+  const respuesta = await fetch(`${BASE()}:commit`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      writes: [
+        {
+          update: { name: ruta, fields: fijos },
+          updateMask: { fieldPaths: Object.keys(fijos) },
+          updateTransforms: [
+            { fieldPath: 'llamadas', increment: entero(1) },
+            { fieldPath: tipo === 'burbuja' ? 'burbujas' : 'preguntas', increment: entero(1) },
+            { fieldPath: 'tokensEntrada', increment: entero(tokens?.entrada) },
+            { fieldPath: 'tokensSalida', increment: entero(tokens?.salida) },
+            { fieldPath: 'tokensCache', increment: entero(tokens?.cache) },
+          ],
+        },
+      ],
+    }),
+  })
+  if (!respuesta.ok) {
+    console.error('No se pudo anotar el uso:', (await respuesta.text()).slice(0, 300))
+  }
+  return respuesta.ok
+}
+
+/** Todos los contadores de uso. Solo lo llama la ruta de administracion. */
+export async function listarUso(token, tope = 300) {
+  const respuesta = await fetch(`${BASE()}/uso?pageSize=${tope}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  if (!respuesta.ok) {
+    console.error('No se pudo listar el uso:', (await respuesta.text()).slice(0, 200))
+    return []
+  }
+  const datos = await respuesta.json()
+  if (!datos?.documents) return []
+  return datos.documents.map((d) => ({ uid: d.name.split('/').pop(), datos: aObjeto(d.fields) }))
+}
+
 /** Anota cuando se aviso, que es el unico campo que el robot puede tocar. */
 export async function anotarAviso(token, uid, cuando) {
   const respuesta = await fetch(

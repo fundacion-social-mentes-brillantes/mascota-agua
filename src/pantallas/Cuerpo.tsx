@@ -1,3 +1,4 @@
+import FranjaAgua from '../componentes/FranjaAgua'
 import PanelOrganos from '../componentes/PanelOrganos'
 import { consejoAhora } from '../lib/hidratacion'
 import type { EstadoCuerpo, Perfil } from '../lib/tipos'
@@ -40,6 +41,8 @@ export default function Cuerpo({ perfil, estado }: { perfil: Perfil; estado: Est
           {consejo.resumen}
         </p>
       </section>
+
+      <FranjaAgua perfil={perfil} estado={estado} />
 
       <PanelOrganos estado={estado} />
 

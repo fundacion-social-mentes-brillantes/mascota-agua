@@ -1,11 +1,17 @@
-import { useEffect, useRef, useState } from 'react'
-import { Camera, Check, Loader2, Minus, Plus, X } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { AlertTriangle, Camera, Check, Loader2, Minus, Plus, X } from 'lucide-react'
 import { agregarRegistro, sumarGotas } from '../lib/almacen'
 import { comprimirImagen, guardarFoto } from '../lib/fotos'
 import { RECIPIENTES, recipientePorId } from '../lib/recipientes'
-import { TOPES } from '../lib/hidratacion'
+import { revisarToma, TOPES } from '../lib/hidratacion'
 import { revisarFoto } from '../lib/vision'
-import type { EstadoCuerpo, EstadoVerificacion, Mascota, Perfil, Recipiente } from '../lib/tipos'
+import type {
+  EstadoVerificacion,
+  Mascota,
+  Perfil,
+  Recipiente,
+  Registro,
+} from '../lib/tipos'
 
 const GOTAS_POR_TRAGO = 5
 const GOTAS_POR_FOTO = 10
@@ -15,13 +21,13 @@ export default function RegistrarAgua({
   uid,
   perfil,
   mascota,
-  estado,
+  registros,
   alCerrar,
 }: {
   uid: string
   perfil: Perfil
   mascota: Mascota
-  estado: EstadoCuerpo
+  registros: Registro[]
   alCerrar: () => void
 }) {
   const [recipiente, setRecipiente] = useState<Recipiente>('vaso')
@@ -42,7 +48,13 @@ export default function RegistrarAgua({
     }
   }, [])
 
-  const seVaAPasar = estado.mlUltimaHora + ml > TOPES.maximoPorHoraMl
+  // La app revisa la toma ANTES de guardarla y lo dice de frente, para que
+  // nadie se lleve la sorpresa despues. Si le da sin parar al boton, aqui se
+  // le nota.
+  const revisionToma = useMemo(() => revisarToma(ml, registros), [ml, registros])
+  const noCabe = revisionToma.veredicto === 'rechazado'
+  const seRecorta = revisionToma.veredicto === 'recortado'
+  const mlQueSeGuardan = revisionToma.mlAceptado
 
   function elegirRecipiente(id: Recipiente) {
     setRecipiente(id)
@@ -88,6 +100,14 @@ export default function RegistrarAgua({
 
   async function guardar() {
     if (guardando) return
+    // Se vuelve a revisar en el momento de guardar: entre que abrio la
+    // ventana y que le dio al boton pudo pasar una hora, o pudo registrar
+    // agua desde otro telefono.
+    const revisionFinal = revisarToma(ml, registros)
+    if (revisionFinal.veredicto === 'rechazado') {
+      setError(revisionFinal.motivo)
+      return
+    }
     setGuardando(true)
     setError(null)
     try {
@@ -95,7 +115,7 @@ export default function RegistrarAgua({
       const id = await agregarRegistro(
         uid,
         {
-          ml,
+          ml: revisionFinal.mlAceptado,
           recipiente,
           verificacion,
           tieneFotoLocal: Boolean(foto),
@@ -109,7 +129,7 @@ export default function RegistrarAgua({
         GOTAS_POR_TRAGO +
         (foto ? GOTAS_POR_FOTO : 0) +
         (verificacion === 'confirmado' ? GOTAS_POR_CONFIRMADA : 0)
-      await sumarGotas(uid, gotas, Math.round(ml / 50))
+      await sumarGotas(uid, gotas, Math.round(revisionFinal.mlAceptado / 50))
       alCerrar()
     } catch {
       setError('No se pudo guardar. Revisa tu conexión e intenta otra vez.')
@@ -175,10 +195,21 @@ export default function RegistrarAgua({
               <Plus size={20} />
             </button>
           </div>
-          {seVaAPasar && (
-            <p className="mt-3 rounded-xl bg-[var(--color-alerta)]/12 px-3 py-2 text-xs text-[var(--color-alerta)]">
-              Con este vaso pasarías de {TOPES.maximoPorHoraMl} ml en una hora. El riñón no
-              alcanza a eliminar más que eso: mejor esperar un rato.
+          {(noCabe || seRecorta) && (
+            <p
+              className={`mt-3 flex gap-2 rounded-xl px-3 py-2 text-xs ${
+                noCabe
+                  ? 'bg-[var(--color-peligro)]/12 text-[var(--color-peligro)]'
+                  : 'bg-[var(--color-alerta)]/12 text-[var(--color-alerta)]'
+              }`}
+            >
+              <AlertTriangle size={14} className="mt-0.5 shrink-0" />
+              <span>{revisionToma.motivo}</span>
+            </p>
+          )}
+          {revisionToma.sospecha && (
+            <p className="mt-2 rounded-xl bg-[var(--color-alerta)]/12 px-3 py-2 text-xs text-[var(--color-alerta)]">
+              {revisionToma.sospecha}
             </p>
           )}
         </div>
@@ -250,10 +281,14 @@ export default function RegistrarAgua({
         <button
           type="button"
           onClick={guardar}
-          disabled={guardando || revisando}
+          disabled={guardando || revisando || noCabe}
           className="w-full rounded-2xl bg-gradient-to-r from-[var(--color-agua-clara)] to-[var(--color-agua)] py-4 font-bold text-[#04121f] transition active:scale-[0.99] disabled:opacity-60"
         >
-          {guardando ? 'Guardando...' : `Registrar ${ml} ml para ${mascota.nombre}`}
+          {guardando
+            ? 'Guardando...'
+            : noCabe
+              ? 'Ahora no cabe más agua'
+              : `Registrar ${mlQueSeGuardan} ml para ${mascota.nombre}`}
         </button>
       </div>
     </div>
