@@ -208,3 +208,103 @@ media de margen; de 500 para arriba hay que dejarlo para el día siguiente.
   Volumes* — vaciado gástrico de 240 a 800 ml.
 - Sleep Foundation, *How Drinking Water Before Bed Impacts Sleep* — nocturia y
   fragmentación del sueño.
+
+---
+
+## Tercera vuelta (13-08-2026): las otras bebidas
+
+Sebastián preguntó qué pasa cuando uno no toma agua sino gaseosa, agua con gas
+o cerveza. Se investigó a fondo. **De las 12 cifras que se mandaron a
+verificación adversarial, seis se cayeron**: los "factores de hidratación" que
+circulan por internet y que usan otras apps son en buena parte inventados.
+
+### La decisión
+
+Se separan dos cosas que estaban mezcladas:
+
+- **El líquido** llena a la mascota. Casi todo cuenta, porque es verdad: el
+  tinto, la gaseosa y una cerveza **no deshidratan**. Decir "eso no cuenta"
+  sería mentir.
+- **La meta** es de agua. No porque lo demás haga daño, sino porque es la
+  promesa que la persona se hace. Y aquí el agua es gratis y la gaseosa cuesta:
+  una meta que se cumple con gaseosa es una meta al revés.
+
+### Los factores
+
+Es **cuánta agua contiene** la bebida (tablas de composición de alimentos), no
+"cuánto hidrata". Tres niveles, no veinte: nadie calcula el tamaño de su vaso
+con menos de 20% de error, y fingir la diferencia entre 0,88 y 0,90 sería una
+mentira nueva con cara de precisión.
+
+| Clase | Factor | Cuenta para la meta |
+|---|---|---|
+| Agua (natural, con gas, saborizada sin azúcar) | 1,00 | **Sí** |
+| Claro sin azúcar ni leche (tinto, té, gaseosa zero) | 1,00 | No |
+| Con azúcar, leche o espesa | 0,90 | No |
+| Cerveza, hasta 660 ml/día | 0,90 | No |
+| Vino y destilados | 0 | No |
+
+### Por qué NO se usa el Beverage Hydration Index
+
+El BHI (Maughan et al. 2016) es el estudio que sostiene el "todo cuenta", y para
+eso sirve. Como sistema de puntos, no:
+
+- Sus valores por bebida **no están impresos en el artículo**: hay que leerlos
+  de una gráfica.
+- **Ninguno es estadísticamente significativo**, salvo la leche y el suero oral.
+- Son **15 a 17 hombres jóvenes por bebida**, sanos, en ayunas, ya hidratados,
+  bebiendo 1 litro de golpe, seguidos 4 horas. Sin mujeres, sin niños, sin
+  adultos mayores, sin enfermos, sin calor y sin ejercicio.
+- Lo financió el **European Hydration Institute**, entidad creada con dinero de
+  Coca-Cola y cerrada en 2015; el autor principal presidía su comité
+  científico. Los datos no son falsos —los productos del financiador empataron
+  con el agua, no ganaron— pero obliga a declararlo.
+
+Dos reglas duras que salen de ahí: **ninguna bebida pasa de 1,00** (ni la leche,
+aunque el estudio diga que retiene más líquido: en el momento en que una bebida
+"vale más que el agua", la app deja de medir el cuerpo y empieza a repartir
+puntos) y **ninguna bebida resta** (inventar una deuda es tan deshonesto como
+regalar un bono).
+
+### El alcohol
+
+Apagado de fábrica, se prende en Ajustes, no existe para menores de edad. La
+cerveza aporta su agua hasta **660 ml al día** (dos porciones, ~20 g de alcohol)
+y después cero.
+
+**Ese tope es el LÍMITE DE LA EVIDENCIA, no un umbral publicado.** El estudio
+midió UNA cerveza al 4%. Más allá no hay dato, y donde no hay dato la app deja
+de sumar: pedirá más agua, no menos.
+
+### La cafeína
+
+Se informa, no descuenta. La cafeína sí aumenta la orina desde unos **250 a 300
+mg**, que no está lejos del consumo normal (2 o 3 tazas cargadas). Pero no
+existe un factor publicado para convertir eso en menos líquido, así que no se
+inventa ningún multiplicador.
+
+Cifras del catálogo, comprobables: café colado ~45 mg/100 ml (una taza de 240 ml
+trae unos 95 mg); té negro ~20 mg/100 ml; gaseosa de cola ~11 mg/100 ml (una
+lata de 330 ml, entre 32 y 42 mg); energizante ~32 mg/100 ml (una lata de 250 ml,
+80 mg).
+
+### La salvaguarda que sostiene todo
+
+**La racha es de REGISTRAR, no de cumplir.** Si hoy solo tomó gaseosa y lo
+anotó, la racha sigue viva; solo se pierde la medalla del agua. Si la racha se
+rompiera por no cumplir, lo racional sería dejar de registrar los días malos
+—que son justo los que la app necesita ver.
+
+### Fuentes de esta vuelta
+
+- Maughan RJ et al. (2016), *A randomized trial to assess the potential of
+  different beverages to affect hydration status*, Am J Clin Nutr — el BHI.
+- Killer SC, Blannin AK, Jeukendrup AE (2014), *No evidence of dehydration with
+  moderate daily coffee intake*, PLoS ONE.
+- Zhang Y et al. (2015), meta-análisis sobre cafeína y balance de líquidos.
+- EFSA (2010), *Dietary Reference Values for water*.
+- IOM/NASEM (2004), *Dietary Reference Intakes for Water, Potassium, Sodium,
+  Chloride, and Sulfate*.
+- NHS, *Water, drinks and your health*; Harvard T.H. Chan School of Public
+  Health, *The Nutrition Source: Water*.
+- OMS (2023), directriz sobre edulcorantes no azucarados.
