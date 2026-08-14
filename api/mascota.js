@@ -134,6 +134,35 @@ function estadoDeAhora(contexto) {
     .join('\n')
 }
 
+/**
+ * Una llamada a DeepSeek. Devuelve el JSON crudo, o null si fallo.
+ *
+ * El presupuesto de tokens es GENEROSO cuando razona porque el razonamiento
+ * se descuenta del mismo max_tokens que la respuesta: si se queda corto, el
+ * modelo piensa y se queda sin espacio para contestar.
+ */
+async function pedirle(clave, mensajes, modoPensar, esBurbuja) {
+  const respuesta = await fetch(URL_DEEPSEEK, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${clave}` },
+    body: JSON.stringify({
+      model: process.env.DEEPSEEK_MODEL || MODELO_POR_DEFECTO,
+      messages: mensajes,
+      thinking: modoPensar,
+      // Las burbujas van con mas chispa y mucho mas cortas.
+      temperature: esBurbuja ? 1 : 0.7,
+      max_tokens: esBurbuja ? 90 : modoPensar === PENSANDO ? 3000 : 700,
+      stream: false,
+    }),
+  })
+  if (!respuesta.ok) {
+    const detalle = await respuesta.text()
+    console.error('DeepSeek respondio', respuesta.status, detalle.slice(0, 400))
+    return null
+  }
+  return respuesta.json()
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     res.status(405).json({ error: 'Solo POST' })
@@ -188,41 +217,33 @@ export default async function handler(req, res) {
           { role: 'user', content: `${estadoDeAhora(contexto)}\n\n${pregunta.slice(0, 1500)}` },
         ]
 
-    const respuesta = await fetch(URL_DEEPSEEK, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${clave}`,
-      },
-      body: JSON.stringify({
-        model: process.env.DEEPSEEK_MODEL || MODELO_POR_DEFECTO,
-        messages: mensajes,
-        thinking: esBurbuja ? SIN_PENSAR : PENSANDO,
-        // Las burbujas van con mas chispa y mucho mas cortas. Las respuestas
-        // de salud necesitan aire para razonar antes de la frase final.
-        temperature: esBurbuja ? 1 : 0.7,
-        max_tokens: esBurbuja ? 90 : 1200,
-        stream: false,
-      }),
-    })
+    // Primer intento: razonando si es una pregunta de salud.
+    let datos = await pedirle(clave, mensajes, esBurbuja ? SIN_PENSAR : PENSANDO, esBurbuja)
+    let penso = !esBurbuja
 
-    if (!respuesta.ok) {
-      const detalle = await respuesta.text()
-      console.error('DeepSeek respondio', respuesta.status, detalle.slice(0, 400))
-      res.status(502).json({ error: 'El modelo no respondio' })
-      return
+    // A veces el modelo se gasta todo el presupuesto RAZONANDO y devuelve la
+    // respuesta vacia. Medido en produccion: pasaba una de cada cinco veces.
+    // Quedarse callado en una app de salud no es opcion, asi que se reintenta
+    // sin razonar: una respuesta buena e inmediata vale mas que ninguna.
+    if (!esBurbuja && !datos?.choices?.[0]?.message?.content?.trim()) {
+      console.warn('Vino vacia razonando (fin:', datos?.choices?.[0]?.finish_reason, '). Reintento sin razonar.')
+      datos = await pedirle(clave, mensajes, SIN_PENSAR, false)
+      penso = false
     }
 
-    const datos = await respuesta.json()
+    if (!datos) {
+      res.status(502).json({ error: 'El modelo no respondió' })
+      return
+    }
     const texto = datos?.choices?.[0]?.message?.content?.trim()
     if (!texto) {
-      res.status(502).json({ error: 'Respuesta vacia' })
+      res.status(502).json({ error: 'Respuesta vacía' })
       return
     }
 
     // Se devuelve el modelo para poder comprobar desde afuera cual contesto
     // de verdad, sin tener que creerle a la configuracion.
-    res.status(200).json({ texto, modelo: datos?.model ?? null, penso: !esBurbuja })
+    res.status(200).json({ texto, modelo: datos?.model ?? null, penso })
 
     // Y se anota el uso. Va DESPUES de responder y sin await bloqueante: si
     // Firestore se demora, la mascota ya contesto. Si falla, se pierde un
