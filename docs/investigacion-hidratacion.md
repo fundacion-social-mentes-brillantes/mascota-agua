@@ -146,3 +146,65 @@ avisa por debajo de los 15 años.
 - [Mild dehydration impairs cognitive performance and mood of men — British Journal of Nutrition](https://www.cambridge.org/core/journals/british-journal-of-nutrition/article/mild-dehydration-impairs-cognitive-performance-and-mood-of-men/3388AB36B8DF73E844C9AD19271A75BF)
 - [Mild Dehydration Affects Mood in Healthy Young Women — The Journal of Nutrition](https://jn.nutrition.org/article/S0022-3166(22)02889-9/fulltext)
 - [Do small differences in hydration status affect mood and mental performance? — PubMed](https://pubmed.ncbi.nlm.nih.gov/26290294/)
+
+---
+
+## Segunda vuelta (13-08-2026): la franja, la noche y los topes
+
+Se agregaron a `src/lib/hidratacion.ts`. Si alguna de estas cifras hay que
+corregirla, se corrige AQUI y en ese archivo, en ningun otro lado.
+
+### El mínimo vital (la raya de abajo)
+
+No es una meta: es lo que el cuerpo pierde aunque uno se quede quieto.
+
+| Pérdida | Cuánto | De dónde sale |
+|---|---|---|
+| Insensibles (pulmón y piel) | 0,4–0,5 ml/kg por hora → se usa **0,45**, o sea 10,8 ml/kg al día | Es la cifra clínica corriente; en un adulto de 70 kg da 650–850 ml/día. |
+| Orina obligatoria | **500 ml** | El riñón no concentra más allá de ~1200 mOsm/L y hay que sacar unos 600 mOsm de desechos al día. 600 ÷ 1200 = 0,5 L. Ese medio litro sale aunque no se tome nada. |
+
+Total de agua **de bebida** = (10,8 × peso + 500) × 0,8, porque una quinta
+parte del agua entra con la comida. Para 75 kg da 1.050 ml.
+
+### El máximo y los dos topes de ritmo
+
+- **4 L al día** es el tope duro de la app. Sin ejercicio fuerte ni calor
+  extremo, por encima de ahí el agua empieza a diluir el sodio.
+- **800 ml por hora**: el riñón elimina entre 0,7 y 1,0 L/h. Se toma el
+  extremo prudente. Beber por encima de ese ritmo varias horas seguidas es
+  justo el mecanismo de la intoxicación por agua.
+- **700 ml por toma**: el estómago vacía bien volúmenes de 240 a 800 ml (vida
+  media de 8 a 18 minutos), pero por encima de unos 7 ml/kg el vaciado ya no
+  termina dentro de la hora. Más de un golpe no hidrata más rápido: se queda
+  pesando.
+
+### La noche (la pregunta de Sebastián)
+
+Si no tomó nada en todo el día y ya casi se acuesta, **no** hay que recuperar
+el déficit. Cada levantada a orinar fragmenta el sueño, y con dos episodios
+por noche ya hay cansancio medible al día siguiente.
+
+| Falta para dormir | Máximo seguro |
+|---|---|
+| Ya pasó la hora | 150 ml |
+| Menos de 1 hora | 200 ml |
+| 1 a 1,5 horas | 300 ml |
+| 1,5 a 2,5 horas | 500 ml |
+| Más de 2,5 horas | 700 ml (el tope normal por toma) |
+
+La medicina del sueño lo resume así: un vaso pequeño (150–200 ml) pegado a la
+cama no le molesta a casi nadie; entre 200 y 500 ml conviene tener hora y
+media de margen; de 500 para arriba hay que dejarlo para el día siguiente.
+
+### Fuentes de esta vuelta
+
+- Merck Manual, *Water and Sodium Balance* — pérdidas insensibles y balance.
+- StatPearls, *Fluid Management* — 0,4–0,5 ml/kg/h de insensibles.
+- UpToDate, *Maintenance and replacement fluid therapy in adults* — volumen
+  urinario obligatorio a partir de la capacidad de concentración.
+- EFSA 2010, *Dietary Reference Values for water* — 2,0 L/día mujeres y
+  2,5 L/día hombres de agua total.
+- Molecular Pharmaceutics 2014, *Quantification of Gastrointestinal Liquid
+  Volumes* — vaciado gástrico de 240 a 800 ml.
+- Sleep Foundation, *How Drinking Water Before Bed Impacts Sleep* — nocturia y
+  fragmentación del sueño.
