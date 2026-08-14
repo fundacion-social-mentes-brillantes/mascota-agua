@@ -10,8 +10,16 @@ import { quienLlama } from './_quien-llama.js'
 const URL_DEEPSEEK = 'https://api.deepseek.com/chat/completions'
 // Mismo modelo que el resto de los proyectos de GEMB: rapido y barato.
 const MODELO_POR_DEFECTO = 'deepseek-v4-flash'
-// "Pensar a fondo" apagado: para una mascota que responde 3 frases no hace
-// falta que razone, y cuesta bastante menos.
+// El modo "pensar a fondo" de v4-flash.
+//
+// ENCENDIDO para las respuestas de salud: cuando alguien pregunta si le falta
+// agua, el modelo tiene que cruzar los mililitros, la hora, los organos, los
+// topes de seguridad y las condiciones medicas antes de contestar. Ahi si
+// vale que razone; equivocarse en salud sale mas caro que unos centavos.
+//
+// APAGADO para las burbujas sueltas: son una frase de ambiente, tienen que
+// aparecer rapido y no deciden nada.
+const PENSANDO = { type: 'enabled' }
 const SIN_PENSAR = { type: 'disabled' }
 
 /**
@@ -167,10 +175,11 @@ export default async function handler(req, res) {
       body: JSON.stringify({
         model: process.env.DEEPSEEK_MODEL || MODELO_POR_DEFECTO,
         messages: mensajes,
-        thinking: SIN_PENSAR,
-        // Las burbujas van con mas chispa y mucho mas cortas.
-        temperature: esBurbuja ? 1 : 0.8,
-        max_tokens: esBurbuja ? 90 : 320,
+        thinking: esBurbuja ? SIN_PENSAR : PENSANDO,
+        // Las burbujas van con mas chispa y mucho mas cortas. Las respuestas
+        // de salud necesitan aire para razonar antes de la frase final.
+        temperature: esBurbuja ? 1 : 0.7,
+        max_tokens: esBurbuja ? 90 : 1200,
         stream: false,
       }),
     })
@@ -189,7 +198,9 @@ export default async function handler(req, res) {
       return
     }
 
-    res.status(200).json({ texto })
+    // Se devuelve el modelo para poder comprobar desde afuera cual contesto
+    // de verdad, sin tener que creerle a la configuracion.
+    res.status(200).json({ texto, modelo: datos?.model ?? null, penso: !esBurbuja })
   } catch (fallo) {
     console.error('Error hablando con DeepSeek:', fallo)
     res.status(500).json({ error: 'Fallo interno' })

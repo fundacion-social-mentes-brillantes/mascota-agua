@@ -19,6 +19,9 @@ export type Expresion =
   | 'guino'
   | 'hambrienta'
   | 'mareada' // se paso de agua
+  | 'pensando' // le preguntaron algo y esta buscando la respuesta
+  | 'orgullosa' // varios dias seguidos cumpliendo
+  | 'aliviada' // acaba de salir de un rato largo sin agua
 
 /** Cosas que pasan y le cambian la cara por un rato. */
 export type Momento =
@@ -29,10 +32,19 @@ export type Momento =
   | 'de-noche'
   | 'exceso'
   | 'saludando'
+  | 'pensando'
+  | 'en-racha'
+  | 'alivio'
 
 export function expresionDe(nivel: NivelCuerpo, momento: Momento = 'nada'): Expresion {
   // Lo que acaba de pasar manda sobre el animo de fondo.
   switch (momento) {
+    case 'pensando':
+      return 'pensando'
+    case 'alivio':
+      return 'aliviada'
+    case 'en-racha':
+      return 'orgullosa'
     case 'acaba-de-beber':
       return 'emocionada'
     case 'meta-cumplida':
@@ -210,6 +222,41 @@ const RASGOS: Record<Expresion, Rasgos> = {
     chispas: false,
     zzz: false,
     energia: 0.7,
+  },
+  pensando: {
+    // Mira hacia arriba con una ceja levantada: es la cara de estar buscando
+    // la respuesta, y hace que la espera se sienta viva y no colgada.
+    ojos: 'abiertos',
+    parpado: 0.12,
+    boca: 'o',
+    cejas: 'levantadas',
+    cachetes: false,
+    sudor: false,
+    chispas: false,
+    zzz: false,
+    energia: 1.05,
+  },
+  orgullosa: {
+    ojos: 'arco',
+    parpado: 0,
+    boca: 'sonrisa-abierta',
+    cejas: 'levantadas',
+    cachetes: true,
+    sudor: false,
+    chispas: true,
+    zzz: false,
+    energia: 1.4,
+  },
+  aliviada: {
+    ojos: 'arco',
+    parpado: 0,
+    boca: 'sonrisa',
+    cejas: 'ninguna',
+    cachetes: true,
+    sudor: false,
+    chispas: false,
+    zzz: false,
+    energia: 1.1,
   },
 }
 

@@ -4,11 +4,6 @@ import { saludoAlEntrar } from '../lib/personalidad'
 import { hablarConLaMascota, pedirBurbuja } from '../lib/mascotaIA'
 import type { Momento } from '../lib/expresiones'
 
-const SUGERENCIAS = [
-  '¿Cómo vas con el agua de hoy?',
-  '¿Necesito tomar más ahora?',
-  '¿Qué órgano es el que peor la está pasando?',
-]
 import Mascota from '../componentes/MascotaViva'
 import Anillo from '../componentes/Anillo'
 import { saludoDeLaMascota } from '../lib/frases'
@@ -20,6 +15,12 @@ import type {
   Registro,
   ResumenDia,
 } from '../lib/tipos'
+
+const SUGERENCIAS = [
+  '¿Cómo vas con el agua de hoy?',
+  '¿Necesito tomar más ahora?',
+  '¿Qué órgano es el que peor la está pasando?',
+]
 
 function horaCorta(hora: number): string {
   return new Date(hora).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })
@@ -55,9 +56,18 @@ export default function Casa({
   const hambre = tieneHambre(mascota.ultimaComida)
   const faltan = Math.max(0, estado.metaMl - estado.totalHoyMl)
 
+  const [burbuja, setBurbuja] = useState(() => saludoAlEntrar(perfil, estado, ayer, racha))
+  const [texto, setTexto] = useState('')
+  const [miPregunta, setMiPregunta] = useState<string | null>(null)
+  const [esperando, setEsperando] = useState(false)
+
   // Que cara pone ahora. Lo que acaba de pasar manda sobre el animo de fondo.
   const momento: Momento = useMemo(() => {
+    // Mientras busca la respuesta, pone cara de estar pensando. Es lo que
+    // hace que la espera se sienta viva y no colgada.
+    if (esperando) return 'pensando'
     if (estado.alertaExceso) return 'exceso'
+    if (racha >= 3 && estado.totalHoyMl >= estado.metaMl) return 'en-racha'
     // Si tomó agua hace menos de un minuto, se emociona.
     if (Number.isFinite(estado.horasSinBeber) && estado.horasSinBeber * 60 < 1)
       return 'acaba-de-beber'
@@ -66,14 +76,10 @@ export default function Casa({
     if (hora >= 23 || hora < 5) return 'de-noche'
     if (hambre) return 'tiene-hambre'
     return 'nada'
-  }, [estado, hambre])
+  }, [estado, hambre, esperando, racha])
 
   // Lo que la mascota suelta sola. Arranca con la frase local (instantanea,
   // sin internet) y en cuanto DeepSeek contesta, la reemplaza por una suya.
-  const [burbuja, setBurbuja] = useState(() => saludoAlEntrar(perfil, estado, ayer, racha))
-  const [texto, setTexto] = useState('')
-  const [miPregunta, setMiPregunta] = useState<string | null>(null)
-  const [esperando, setEsperando] = useState(false)
 
   async function preguntar(pregunta: string) {
     const limpia = pregunta.trim()
