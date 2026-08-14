@@ -10,6 +10,7 @@ import {
   revisarToma,
   zonaDelDia,
 } from './hidratacion'
+import { loDeSiempre } from './sugerencias'
 import type { Perfil, Registro } from './tipos'
 
 const base: Perfil = {
@@ -184,3 +185,31 @@ for (const tazas of [1, 2, 3, 4]) {
   const aviso = e.cafeinaHoyMg >= 250 ? '  <-- ya avisa' : ''
   console.log(`  ${tazas} tinto(s) de 180 ml -> ${e.cafeinaHoyMg} mg${aviso}`)
 }
+
+console.log('')
+console.log('=== "LO DE SIEMPRE": que propone segun la hora ===')
+const historial: Registro[] = []
+const meter = (bebida: string, ml: number, hora: number, veces: number) => {
+  for (let i = 0; i < veces; i++) {
+    historial.push({
+      id: bebida + ml + hora + i, ml, mlBruto: ml, bebida,
+      hora: aLas(hora) - i * 86_400_000,
+      dia: 'prueba', recipiente: 'vaso', verificacion: 'sin-foto', tieneFotoLocal: false,
+    })
+  }
+}
+meter('tinto', 180, 7, 8)      // tinto de la manana, casi todos los dias
+meter('agua', 250, 10, 6)
+meter('agua', 500, 15, 7)      // botella de agua de la tarde
+meter('panela', 300, 16, 4)    // agua de panela de la tarde
+meter('gaseosa', 350, 13, 2)   // gaseosa de vez en cuando al almuerzo
+meter('jugo', 200, 8, 1)       // una sola vez: NO deberia salir
+
+for (const h of [7, 13, 16, 21]) {
+  const s = loDeSiempre(historial, aLas(h))
+  const texto = s.map((x) => `${x.bebida} ${x.ml}ml`).join('  |  ') || '(nada todavia)'
+  console.log(`  A las ${String(h).padStart(2, '0')}:00 propone -> ${texto}`)
+}
+console.log('')
+console.log('  Con un historial de una sola vez (no deberia proponer nada):')
+console.log('    ' + JSON.stringify(loDeSiempre([historial[historial.length - 1]], aLas(8))))

@@ -9,6 +9,7 @@ import {
   escucharRegistrosDelDia,
   guardarMascota,
   leerHistorico,
+  leerRegistrosRecientes,
 } from './lib/almacen'
 import { calcularEstadoCuerpo } from './lib/hidratacion'
 import { describirCuerpo } from './lib/frases'
@@ -25,6 +26,7 @@ import RegistrarAgua from './componentes/RegistrarAgua'
 import Cargando from './componentes/Cargando'
 import { useRecordatorios } from './lib/recordatorios'
 import { sincronizarAvisos } from './lib/push'
+import { loDeSiempre } from './lib/sugerencias'
 
 type Seccion = 'casa' | 'linea' | 'cuerpo' | 'tienda' | 'ajustes' | 'panel'
 
@@ -122,6 +124,24 @@ export default function App() {
     const base = calcularEstadoCuerpo(perfil, registros)
     return { ...base, loQuePasa: describirCuerpo(base) }
   }, [perfil, registros])
+
+  // Lo que esta persona repite, para los botones de un toque. Se lee una vez
+  // al entrar y cuando cambia el dia: no hace falta mas.
+  const [recientes, setRecientes] = useState<Registro[]>([])
+  useEffect(() => {
+    if (!usuario) return
+    let vivo = true
+    leerRegistrosRecientes(usuario.uid, 14)
+      .then((lista) => {
+        if (vivo) setRecientes(lista)
+      })
+      .catch(() => {})
+    return () => {
+      vivo = false
+    }
+  }, [usuario, dia])
+
+  const sugerencias = useMemo(() => loDeSiempre(recientes), [recientes])
 
   // El historial sirve para que la mascota se acuerde de ayer y de la racha.
   const [historico, setHistorico] = useState<ResumenDia[]>([])
@@ -237,6 +257,8 @@ export default function App() {
             registros={registros}
             ayer={ayer}
             racha={racha}
+            uid={usuario.uid}
+            sugerencias={sugerencias}
             alRegistrar={abrirRegistro}
           />
         )}

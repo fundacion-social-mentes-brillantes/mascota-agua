@@ -157,6 +157,21 @@ export async function borrarRegistro(uid: string, registro: Registro): Promise<v
   await lote.commit()
 }
 
+/**
+ * Los tragos de los ultimos dias, para saber que toma esta persona de
+ * costumbre. Se usa para los botones de "lo de siempre".
+ *
+ * Se filtra por `dia` (texto AAAA-MM-DD, que se ordena solo) para no tener que
+ * pedirle un indice compuesto a Firestore.
+ */
+export async function leerRegistrosRecientes(uid: string, dias = 14): Promise<Registro[]> {
+  const desde = diaDe(Date.now() - dias * 86_400_000)
+  const instantanea = await getDocs(
+    query(colRegistros(uid), where('dia', '>=', desde), limit(400)),
+  )
+  return instantanea.docs.map((d) => ({ ...(d.data() as Registro), id: d.id }))
+}
+
 /** Los últimos días, del más reciente al más viejo. */
 export async function leerHistorico(uid: string, cuantos = 30): Promise<ResumenDia[]> {
   const instantanea = await getDocs(

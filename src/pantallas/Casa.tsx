@@ -5,6 +5,8 @@ import { hablarConLaMascota, pedirBurbuja } from '../lib/mascotaIA'
 import type { Momento } from '../lib/expresiones'
 
 import Mascota from '../componentes/MascotaViva'
+import LoDeSiempre from '../componentes/LoDeSiempre'
+import type { Sugerencia } from '../lib/sugerencias'
 import Anillo from '../componentes/Anillo'
 import { saludoDeLaMascota } from '../lib/frases'
 import { tieneHambre } from '../lib/tienda'
@@ -41,6 +43,8 @@ export default function Casa({
   registros,
   ayer,
   racha,
+  uid,
+  sugerencias,
   alRegistrar,
 }: {
   perfil: Perfil
@@ -51,6 +55,8 @@ export default function Casa({
   ayer: ResumenDia | null
   /** Días seguidos cumpliendo la meta. */
   racha: number
+  uid: string
+  sugerencias: Sugerencia[]
   alRegistrar: () => void
 }) {
   const hambre = tieneHambre(mascota.ultimaComida)
@@ -221,6 +227,10 @@ export default function Casa({
           </span>
         )}
       </div>
+
+      {/* Un toque para lo que esta persona repite todos los dias. Va ANTES
+          del boton grande porque es lo que va a usar el 90% de las veces. */}
+      <LoDeSiempre uid={uid} metaMl={perfil.metaMl} sugerencias={sugerencias} registros={registros} />
 
       <button
         type="button"
