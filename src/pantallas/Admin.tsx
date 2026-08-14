@@ -38,6 +38,30 @@ interface Resumen {
   avisosEncendidos: number
 }
 
+type Respuesta = { resumen: Resumen; gente: Fila[] } | { error: string }
+
+/** Le pregunta al servidor. No sabe nada de React a proposito. */
+async function traerDelServidor(): Promise<Respuesta> {
+  try {
+    const token = await obtenerAuth().currentUser?.getIdToken()
+    const respuesta = await fetch('/api/admin', {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    if (!respuesta.ok) {
+      return {
+        error:
+          respuesta.status === 404
+            ? 'Este panel es solo para el correo de la Fundación.'
+            : 'No se pudo traer la información.',
+      }
+    }
+    const datos = await respuesta.json()
+    return { resumen: datos.resumen, gente: datos.gente ?? [] }
+  } catch {
+    return { error: 'No se pudo conectar.' }
+  }
+}
+
 function cuandoFue(dias: number | null): string {
   if (dias === null) return 'nunca'
   if (dias === 0) return 'hoy'
@@ -51,40 +75,35 @@ export default function Admin() {
   const [resumen, setResumen] = useState<Resumen | null>(null)
   const [gente, setGente] = useState<Fila[]>([])
 
-  // `avisar` va en false en la primera carga: el estado ya arranca "cargando"
-  // y sin nada de error, asi que no hay que tocarlo. Ademas evita cambiar el
-  // estado dentro del efecto, que dispara renders en cascada.
-  const traer = useCallback(async (avisar = true) => {
-    if (avisar) {
-      setCargando(true)
+  // Traer los datos y guardarlos en el estado son dos cosas distintas, y aqui
+  // estan separadas a proposito: `traerDelServidor` (arriba, fuera del
+  // componente) no toca React, y el estado solo se mueve cuando la respuesta
+  // ya llego. Asi ningun efecto cambia el estado de una vez, que es lo que
+  // dispara renders en cascada.
+  const aplicar = useCallback((r: Respuesta) => {
+    if ('error' in r) setError(r.error)
+    else {
+      setResumen(r.resumen)
+      setGente(r.gente)
       setError(null)
     }
-    try {
-      const token = await obtenerAuth().currentUser?.getIdToken()
-      const respuesta = await fetch('/api/admin', {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      if (!respuesta.ok) {
-        setError(
-          respuesta.status === 404
-            ? 'Este panel es solo para el correo de la Fundación.'
-            : 'No se pudo traer la información.',
-        )
-        return
-      }
-      const datos = await respuesta.json()
-      setResumen(datos.resumen)
-      setGente(datos.gente ?? [])
-    } catch {
-      setError('No se pudo conectar.')
-    } finally {
-      setCargando(false)
-    }
+    setCargando(false)
   }, [])
 
   useEffect(() => {
-    void traer(false)
-  }, [traer])
+    let vivo = true
+    traerDelServidor().then((r) => {
+      if (vivo) aplicar(r)
+    })
+    return () => {
+      vivo = false
+    }
+  }, [aplicar])
+
+  const actualizar = useCallback(() => {
+    setCargando(true)
+    traerDelServidor().then(aplicar)
+  }, [aplicar])
 
   return (
     <div className="mx-auto max-w-lg px-5 pt-5 pb-6">
@@ -92,7 +111,7 @@ export default function Admin() {
         <h1 className="font-[family-name:var(--font-titulo)] text-xl font-bold">Panel</h1>
         <button
           type="button"
-          onClick={() => void traer()}
+          onClick={actualizar}
           disabled={cargando}
           className="flex items-center gap-1.5 rounded-full border border-[var(--color-borde)] px-3 py-1.5 text-xs text-[var(--color-texto-suave)] disabled:opacity-50"
         >
