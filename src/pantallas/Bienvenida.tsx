@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { guardarMascota, guardarPerfil } from '../lib/almacen'
-import { calcularMeta } from '../lib/hidratacion'
+import { calcularMeta, VERSION_META } from '../lib/hidratacion'
 import { evaluarImc, fraseMundial } from '../lib/imc'
 import type { User } from '../lib/firebase'
 import type {
@@ -161,6 +161,7 @@ export default function Bienvenida({
         horaDormir,
         recordatoriosActivos: recordatorios,
         metaMl: meta.metaMl,
+        versionMeta: VERSION_META,
         creado: perfilPrevio?.creado ?? ahora,
         actualizado: ahora,
       }

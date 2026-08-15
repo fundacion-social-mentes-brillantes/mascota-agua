@@ -17,14 +17,14 @@ const POR_TIEMPO: Tramo[] = [
     frases: [
       'Ahora mismo la sangre está en su punto: ni espesa ni aguada (osmolalidad cerca de 285-290 mOsm/kg).',
       'El riñón está trabajando cómodo: puede botar lo que sobra sin apretar.',
-      'Con este nivel la orina sale clarita, como limonada suave. Esa es la señal de que vas bien.',
+      'Con este nivel la orina suele salir clarita, como limonada suave. Si te la miras y va así, vas bien.',
     ],
   },
   {
     desdeHoras: 2,
     frases: [
       'Ya llevo dos horas sin recibir agua. Todavía no pasa nada grave, pero el cuerpo empezó a ahorrar.',
-      'El cerebro soltó un poco de vasopresina: la hormona que le dice al riñón "guarda agua". La orina ya sale más oscura.',
+      'El cerebro soltó un poco de vasopresina: la hormona que le dice al riñón "guarda agua". Cuando eso pasa, la orina suele oscurecerse.',
       'La sed todavía no aprieta. Ojo con eso: la sed llega tarde, no es el primer aviso.',
     ],
   },
@@ -32,7 +32,7 @@ const POR_TIEMPO: Tramo[] = [
     desdeHoras: 4,
     frases: [
       'Cuatro horas. La sangre está un poquito más concentrada y el corazón tiene que empujar un poco más duro.',
-      'El riñón está exprimiendo: concentra la orina para no perder agua. Por eso sale más amarilla y con más olor.',
+      'El riñón está exprimiendo: concentra la orina para no perder agua. Si te la miras y va más amarilla y con más olor, eso lo confirma.',
       'Aquí es donde suele aparecer ese cansancio raro que uno le echa al trabajo, y a veces es solo agua.',
     ],
   },

@@ -41,6 +41,9 @@ export interface Perfil {
   metaMl: number
   /** Meta puesta a mano por la persona; si existe, manda sobre la calculada. */
   metaManualMl?: number
+  /** Con qué versión de la fórmula se calculó la meta. Si se queda vieja, la
+   *  app la recalcula sola: ver VERSION_META en hidratacion.ts */
+  versionMeta?: number
   creado: number
   actualizado: number
 }

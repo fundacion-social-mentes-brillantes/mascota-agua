@@ -9,7 +9,7 @@ import {
   ponerConsulta,
 } from '../lib/productos'
 import { borrarTodasLasFotos, contarFotos } from '../lib/fotos'
-import { calcularMeta } from '../lib/hidratacion'
+import { calcularMeta, VERSION_META } from '../lib/hidratacion'
 import { evaluarImc, fraseMundial } from '../lib/imc'
 import { estadoDeLosAvisos } from '../lib/recordatorios'
 import { estaSuscrito, suscribirAvisos } from '../lib/push'
@@ -126,6 +126,7 @@ export default function Ajustes({
           recordatoriosActivos: avisos,
           registrarAlcohol: alcohol,
           metaMl: usaManual ? manual : calculada.metaMl,
+          versionMeta: VERSION_META,
           ...(usaManual ? { metaManualMl: manual } : {}),
         },
         // Si el campo queda vacío, se borra la meta a mano y vuelve la calculada.

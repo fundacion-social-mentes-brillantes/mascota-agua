@@ -13,6 +13,19 @@ import {
 } from './bebidas'
 import type { EstadoCuerpo, NivelCuerpo, Perfil, Registro } from './tipos'
 
+/**
+ * Sube cuando cambia la FORMULA de la meta.
+ *
+ * Existe porque la meta se guarda en el perfil de cada persona: si aqui se
+ * corrige un numero, el que ya tenia cuenta seguiria con la meta vieja para
+ * siempre sin enterarse. Con esto la app la recalcula sola la proxima vez que
+ * abra.
+ *
+ * 2 -> se quito el +350 por "actividad moderada", que duplicaba un supuesto
+ *      que las cifras de referencia ya traen puesto.
+ */
+export const VERSION_META = 2
+
 /** Topes de seguridad. La app nunca recomienda por fuera de estos limites. */
 export const TOPES = {
   /** La META nunca se propone por debajo de aqui, sea quien sea la persona.
@@ -122,13 +135,36 @@ function mlPorKiloSegunEdad(edad: number): number {
  */
 const PARTE_QUE_VIENE_DE_LA_COMIDA = 0.2
 
+/**
+ * Cuanta agua se suma POR ENCIMA de la referencia.
+ *
+ * OJO CON ESTO, que estuvo mal y hay que entender por que: las cifras de EFSA
+ * estan escritas para una persona con actividad fisica moderada en clima
+ * templado. Textual: "only apply to conditions of moderate environmental
+ * temperature and moderate physical activity levels". Las dos condiciones van
+ * en la MISMA frase.
+ *
+ * Por eso 'moderada' suma CERO: no es un extra, es el punto de partida.
+ * Antes sumaba 350 y le inflaba la meta a casi todo el mundo (la mayoria se
+ * marca "moderada"), un 22% por encima de la referencia. La tabla del clima ya
+ * tenia 'templado' en cero por esta misma razon: era una incoherencia interna.
+ *
+ * Honestidad sobre el resto: ninguna de las tres fuentes (EFSA, IOM, ESPEN) da
+ * una cifra en mililitros para sumar por actividad o por calor. Los unicos
+ * incrementos con numero publicado son los de embarazo y lactancia. Lo demas
+ * es una convencion prudente de esta app; lo que SI tiene respaldo textual es
+ * que 'moderada' valga cero.
+ */
 const EXTRA_ACTIVIDAD: Record<Perfil['actividad'], number> = {
   poca: 0,
-  moderada: 350,
-  alta: 700,
-  'muy-alta': 1100,
+  moderada: 0,
+  alta: 350,
+  'muy-alta': 700,
 }
 
+/** 'Templado' es la otra condicion de referencia: por eso suma cero. El calor
+ *  si esta por encima, y ahi las tres fuentes coinciden en que hay que reponer
+ *  mas (aunque ninguna diga cuanto en mililitros). */
 const EXTRA_CLIMA: Record<Perfil['clima'], number> = {
   frio: 0,
   templado: 0,

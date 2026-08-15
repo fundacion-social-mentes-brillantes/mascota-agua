@@ -79,11 +79,11 @@ export function organosAhora(estado: EstadoCuerpo): Organo[] {
       queLePasa: exceso
         ? 'Están a tope filtrando. Solo alcanzan a botar cerca de 800 ml por hora, y ahorita les llegó más que eso.'
         : rinones < 25
-          ? 'Filtran tranquilos y botan lo que sobra. La orina sale clarita.'
+          ? 'Filtran tranquilos y botan lo que sobra. Con esto la orina suele salir clarita.'
           : rinones < 50
-            ? 'Empezaron a ahorrar: concentran la orina para no perder agua. Por eso sale más amarilla.'
+            ? 'Empezaron a ahorrar: concentran la orina para no perder agua, y eso la vuelve más amarilla.'
             : rinones < 75
-              ? `Llevan ${Math.floor(horas)} horas exprimiendo. La orina sale oscura y con más olor.`
+              ? `Llevan ${Math.floor(horas)} horas sin recibir agua nueva. Si te miras la orina y va oscura, eso lo confirma; la primera de la mañana no cuenta, que siempre es más oscura.`
               : 'Están apretando al máximo para retener cada gota. Así de seguido, sube el riesgo de cálculos.',
       porQue:
         'Cuando falta agua, el cerebro suelta vasopresina y el riñón reabsorbe más líquido en vez de botarlo.',

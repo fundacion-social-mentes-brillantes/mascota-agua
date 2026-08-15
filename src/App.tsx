@@ -8,10 +8,11 @@ import {
   escucharPerfil,
   escucharRegistrosDelDia,
   guardarMascota,
+  guardarPerfil,
   leerHistorico,
   leerRegistrosRecientes,
 } from './lib/almacen'
-import { calcularEstadoCuerpo } from './lib/hidratacion'
+import { calcularEstadoCuerpo, calcularMeta, VERSION_META } from './lib/hidratacion'
 import { describirCuerpo } from './lib/frases'
 import type { Mascota, Perfil, Registro, ResumenDia } from './lib/tipos'
 import Entrar from './pantallas/Entrar'
@@ -124,6 +125,22 @@ export default function App() {
     const base = calcularEstadoCuerpo(perfil, registros)
     return { ...base, loQuePasa: describirCuerpo(base) }
   }, [perfil, registros])
+
+  // Si la FORMULA de la meta cambio desde que esta persona se registro, se
+  // recalcula sola. Sin esto, a quien ya tenia cuenta le quedaria para siempre
+  // la meta vieja -- y cuando se corrige un numero de salud, eso importa.
+  // No se toca si la puso a mano: esa decision es suya.
+  useEffect(() => {
+    if (!usuario || !perfil) return
+    if (perfil.metaManualMl) return
+    if (perfil.versionMeta === VERSION_META) return
+    const nueva = calcularMeta(perfil).metaMl
+    void guardarPerfil(usuario.uid, {
+      ...perfil,
+      metaMl: nueva,
+      versionMeta: VERSION_META,
+    }).catch(() => {})
+  }, [usuario, perfil])
 
   // Lo que esta persona repite, para los botones de un toque. Se lee una vez
   // al entrar y cuando cambia el dia: no hace falta mas.

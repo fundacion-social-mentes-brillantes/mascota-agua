@@ -308,3 +308,94 @@ rompiera por no cumplir, lo racional sería dejar de registrar los días malos
 - NHS, *Water, drinks and your health*; Harvard T.H. Chan School of Public
   Health, *The Nutrition Source: Water*.
 - OMS (2023), directriz sobre edulcorantes no azucarados.
+
+---
+
+## Corrección del 14-08-2026: la meta estaba inflada
+
+Sebastián avisó que la app le pedía demasiada agua (2.450 ml, unos 10 vasos).
+**Tenía razón.**
+
+### El error
+
+La app sumaba **+350 ml por "actividad moderada"** encima de una base que **ya
+está definida para gente con actividad moderada**. Cobraba dos veces lo mismo.
+
+La cita que lo decide, de EFSA 2010, sobre sus valores de referencia (2,0 L/día
+mujeres, 2,5 L/día hombres):
+
+> *"only apply to conditions of moderate environmental temperature and moderate
+> physical activity levels"*
+
+Las dos condiciones —clima templado y actividad moderada— van en la **misma
+frase**. Y la app ya le daba **0 al clima templado por esa misma razón**: era
+una incoherencia interna suya.
+
+### La tabla corregida
+
+| Actividad | Antes | Ahora | Por qué |
+|---|---|---|---|
+| Poca | 0 | **0** | Ninguna fuente da una cifra para restar. |
+| Moderada | 350 | **0** | **Es la condición de referencia.** Sumar aquí duplica. |
+| Alta | 700 | **350** | Se corre la escala: aquí sí hay algo por encima. |
+| Muy alta | 1.100 | **700** | Igual. |
+
+El clima no se toca: templado 0 (referencia), calor 500, calor húmedo 750.
+
+### Honestidad sobre el resto de la tabla
+
+**Ninguna de las tres fuentes (EFSA, IOM, ESPEN) da una cifra en mililitros para
+sumar por actividad o por calor.** Los únicos incrementos con número publicado
+son los de EFSA para **embarazo (+300 ml)** y **lactancia (+700 ml)**. Todo lo
+demás es una convención prudente de esta app. Lo que **sí** tiene respaldo
+textual es que *moderada* valga cero.
+
+### El efecto
+
+Hombre de 34 años, 75 kg, actividad moderada, clima frío:
+
+| | Antes | Ahora |
+|---|---|---|
+| Meta | 2.450 ml | **2.100 ml** |
+| Equivale a agua total | 3.060 ml | 2.625 ml |
+| Referencia EFSA (hombre) | 2.500 ml | 2.500 ml |
+| Desviación | **+22%** | +5% |
+
+Comprobación cruzada: con 30 ml/kg (en vez de 35) daría 1.800 → mandaría el
+piso de 2.000 ml. Que las dos rutas den 2.000–2.100 es buena señal.
+
+### Lo de la orina: la app afirmaba lo que no puede ver
+
+Había **cinco sitios** donde la app afirmaba el color de la orina ("la orina
+sale oscura y con más olor") deduciéndolo solo de los mililitros registrados.
+**La app no ve la orina de nadie.**
+
+Dos daños, ninguno teórico:
+
+1. **Pierde toda su credibilidad de un golpe.** Es lo único que la persona puede
+   comprobar mirando. Si la ve clara, pilla a la app mintiendo — y desconfía
+   también de lo que la app sí sabe bien.
+2. **Riesgo médico al revés.** Si alguien tiene la orina oscura por una causa
+   real (sangre, hígado, un medicamento), la app ya se lo explicó como falta de
+   agua. Bebe más y no consulta.
+
+Además hay confusores banales que la app ignoraba: el complejo B, la remolacha
+y los colorantes la oscurecen, y **la primera orina de la mañana es más oscura
+siempre**, aunque uno esté bien.
+
+**Las tres reglas que ahora se cumplen:**
+
+1. La app afirma en primera persona **solo lo que mide**: mililitros, hora,
+   tiempo desde el último registro. Del cuerpo no afirma nada.
+2. La fisiología se cuenta como **mecanismo general**, nunca como diagnóstico.
+   El mecanismo es verdadero; "la tuya, ahora" es inventado.
+3. El color entra solo como algo que **la persona mira**, nunca como dictamen.
+
+### Fuentes
+
+- EFSA (2010), *Scientific Opinion on Dietary Reference Values for water*,
+  EFSA Journal 8(3):1459 — la cita de las condiciones de referencia.
+- IOM/NASEM (2004), *Dietary Reference Intakes for Water, Potassium, Sodium,
+  Chloride, and Sulfate*.
+- ESPEN — piso de bebidas para adulto.
+- NICE y British Dietetic Association — la crítica al 35 ml/kg y los 2,0 L/día.

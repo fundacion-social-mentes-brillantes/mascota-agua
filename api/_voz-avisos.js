@@ -31,12 +31,12 @@ export function esperadoAhora(metaMl, minutosAhora, despertar, dormir) {
  */
 const LECCIONES = [
   'Cuando falta agua, uno de mis riñones se cansa y el otro trabaja doble para taparle el hueco. Así aguantan… hasta que no.',
-  'Mi orina oscura no es un color: es mis riñones exprimiendo la misma agua una y otra vez para no soltarla.',
+  'Cuando la orina sale oscura no es un color: son los riñones exprimiendo la misma agua una y otra vez para no soltarla.',
   'Sin agua mi sangre se espesa y mi corazón tiene que latir más rápido para moverla. Por eso el cansancio de la tarde.',
   'Los riñones filtran toda mi sangre unas 35 veces al día. Con poca agua, cada vuelta les cuesta más.',
   'El dolor de cabeza de las 3 de la tarde casi siempre es esto: mi cerebro pidiendo agua, no café.',
   'Cuando me falta agua, mis riñones sueltan una hormona que aprieta las venas. Se aguanta, pero se paga.',
-  'Las piedras en el riñón no salen de un día: salen de muchos días de orina concentrada como la de hoy.',
+  'Las piedras en el riñón no salen de un día: salen de muchos días seguidos de poca agua.',
   'Mis músculos son tres cuartas partes agua. Con sed, un calambre no es mala suerte: es falta de repuesto.',
 ]
 
